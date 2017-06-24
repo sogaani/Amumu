@@ -8,6 +8,8 @@
 #     ./amumu <cmd> ...
 #
 
+NODE_VER=8.1.1
+
 main () {
   local SELF_PATH DIR SYM
   # get the absolute path of the executable
@@ -31,15 +33,21 @@ main () {
 
   # path
   AMUMU_DIR=$(dirname -- "$SELF_PATH")
+  NAVE_DIR=${AMUMU_DIR}/.nave
+  NODE_PATH=${NAVE_DIR}/installed/${NODE_VER}/bin/node
+  NPM_PATH=${NAVE_DIR}/installed/${NODE_VER}/bin/npm
+
+  #export PATH=$NAVE_DIR:${NAVE_DIR}/installed/${NODE_VER}/bin:$PATH
 
   cd $AMUMU_DIR
 
   export AMUMU_DIR
+  export NAVE_DIR
 
   local cmd="$1"
   shift
   case $cmd in
-    client )
+    client | installer )
       cmd="amumu_$cmd"
       ;;
     * )
@@ -50,22 +58,62 @@ main () {
 }
 
 amumu_client () {
-  local cmd
-  cmd="$0"
-  shift
   if ! [ -f "config.json" ]; then
     cp -v client_config.sample.json client_config.json
   fi
 
   ensure_dir log
 
-  node src/amumu-${cmd}.js "$@"> /dev/stdout 2>&1 | tee -a ./log/${name}
+  node src/amumu_client.js "$1" "$2"> /dev/stdout 2>&1 | tee -a ./log/client
   return ${PIPESTATUS[0]}
+}
+
+amumu_installer () {
+  amumu_installer_node
+  amumu_installer_node_modules
+
+  return 0
+}
+
+amumu_installer_node () {
+  remove_dir "$NAVE_DIR"
+  ensure_dir "$NAVE_DIR"
+
+  echo "Installing Node using Nave..."
+  wget -O - https://github.com/isaacs/nave/archive/v0.5.1.tar.gz | tar zxvf - -C $NAVE_DIR nave-0.5.1/nave.sh
+  mv $NAVE_DIR/nave-0.5.1/nave.sh $NAVE_DIR/
+  rm -rfv $NAVE_DIR/nave-0.5.1
+  ${NAVE_DIR}/nave.sh install $NODE_VER
+  rm -fv ${NAVE_DIR}/node
+  ln -sv $NODE_PATH ${NAVE_DIR}/node
+  ln -sv $NPM_PATH ${NAVE_DIR}/npm
+
+  echo "done."
+
+  return 0
+}
+
+amumu_installer_node_modules () {
+  echo "Installing Node Modules using NPM..."
+
+  npm install
+  npm update
+
+  echo "done."
+
+  return 0
 }
 
 ensure_dir () {
   if ! [ -d "$1" ]; then
     mkdir -p -- "$1" || fail "couldn't create $1"
+  fi
+}
+
+remove_dir () {
+  if [ -d "$1" ]; then
+    rm -rf -- "$1" || fail "couldn't remove $1"
+    echo "removed \`$1'"
   fi
 }
 

@@ -1,6 +1,6 @@
 const Agenda = require('agenda');
 const { MongoClient } = require('mongodb');
-const CONFIG_FILE = __dirname + '/../config.json';
+const CONFIG_FILE = __dirname + '/../client_config.json';
 const config = require(CONFIG_FILE);
 
 async function queue(program) {

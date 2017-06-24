@@ -27,7 +27,7 @@ async function run() {
         var args = [];
 
         var file = job.attrs.data.recorded.match(/\/([^\/]+?)\.[^\.]+?$/)[1]
-        var server = config.recordedPath;
+        var server = config.recordedPath + "\\";
         args.push('-y');
         args.push('-i', server + file + '.m2ts');
         args.push('-c:v', 'h264_qsv');

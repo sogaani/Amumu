@@ -25,4 +25,4 @@ AMUMU_DIR=$(dirname -- "$SELF_PATH")
 
 cd $AMUMU_DIR
 
-./amumu client $1 $2
+./amumu client "$1" "$2"
