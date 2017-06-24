@@ -1,0 +1,10 @@
+// 既定の設定とユーザー設定を上書きするには、このファイル内に設定を挿入します
+{
+    "editor.renderWhitespace": "all",
+    "editor.formatOnType": false,
+    "editor.autoClosingBrackets": true,
+    "files.trimTrailingWhitespace": true,
+    "git.enabled": false,
+    "git.autofetch": false,
+    "files.eol": "\n"
+}

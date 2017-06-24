@@ -1,0 +1,6 @@
+/encoder_config.json
+/client_config.json
+/log
+/log/*
+/node
+/node_modules/*

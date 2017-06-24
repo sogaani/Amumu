@@ -1,0 +1,30 @@
+{
+  "name": "amumu",
+  "version": "1.0.0",
+  "description": "amumu",
+  "main": "src/amumu_server.js",
+  "scripts": {
+    "client": "node src/amumu_client.js",
+    "encoder": "node src/amumu_encoder.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sogaani/amumu.git"
+  },
+  "keywords": [
+    "chinachu",
+    "amumu"
+  ],
+  "author": "sogaani",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/sogaani/amumu/issues"
+  },
+  "homepage": "https://github.com/sogaani/amumu",
+  "dependencies": {
+    "agenda": "^0.9.1",
+    "mongodb": "^2.2.29",
+    "node": "0.0.0",
+    "request": "^2.81.0"
+  }
+}
