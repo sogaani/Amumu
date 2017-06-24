@@ -58,7 +58,7 @@ main () {
 }
 
 amumu_client () {
-  if ! [ -f "config.json" ]; then
+  if ! [ -f "client_config.json" ]; then
     cp -v client_config.sample.json client_config.json
   fi
 
