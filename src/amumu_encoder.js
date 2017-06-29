@@ -1,12 +1,23 @@
+"use strict";
+
 const Agenda = require('agenda');
 const { MongoClient } = require('mongodb');
 const child_process = require('child_process');
 const CONFIG_FILE = __dirname + '/../encoder_config.json';
 const config = require(CONFIG_FILE);
+require('request').debug = true;
+const request = require('request');
 
 async function run() {
-    const db = await MongoClient.connect(config.mongodbPath + 'amumu');
-    const agenda = new Agenda().mongo(db, 'jobs');
+    const db = await MongoClient.connect(config.mongodbPath + 'amumu',{
+        server: {
+            socketOptions: {
+                socketTimeoutMS: 0,
+                connectTimeoutMS: 0
+            }
+        }
+    });
+    const agenda = new Agenda(config.mongodbPath + 'amumu').mongo(db, 'jobs');
 
     child_process.execSync('net use ' + config.recordedPath + ' ' + config.remoteAuthPass + ' /user:' + config.remoteAuthUser);
 
@@ -15,17 +26,18 @@ async function run() {
         return !(count > 0);
     }
 
-    function failJob(job,err) {
+    async function failJob(job,err) {
         job.fail(err);
-        job.save();
+        await new Promise(resolve => job.save(resolve()));
     }
 
-    agenda.define('amumu_encode', async function(job)  {
+    agenda.define('amumu_encode', async job =>  {
+        try {
         if (await checkCancelled(job)) {
             return;
         }
         var args = [];
-
+        console.log("encode start");
         var file = job.attrs.data.recorded.match(/\/([^\/]+?)\.[^\.]+?$/)[1]
         var server = config.recordedPath + "\\";
         args.push('-y');
@@ -37,45 +49,41 @@ async function run() {
         args.push('-c:a', 'aac');
         args.push( server + file + '.mp4');
 
-        var ffmpeg = child_process.spawnSync('ffmpeg',args,{ stdio: 'inherit' });
+        var ffmpeg = child_process.spawnSync('ffmpeg',args,{ stdio: 'ignore' });
         if ( ffmpeg.status != 0 ){
+            console.log("encode fail");
             failJob(job,'fail ffmpeg');
             return;
         }
-
-        var request = require('request')
+        console.log("encode end");
 
         var obj = {
             recorded:   job.attrs.data.recorded.match(/^(.+)\.[^\.]+?$/)[1] + '.mp4'
         };
 
         var delopts = {
-            url: config.chinachuPath + 'api/recorded/' + job.attrs.data.id +'/file.m2ts',
-            method: 'DELETE'
-        }
+            uri: config.chinachuPath + 'api/recorded/' + job.attrs.data.id +'/file.json',
+            method: 'DELETE',
+            timeout: 30 * 1000,
+            agent: false
+        };
         var putopts = {
-            url: config.chinachuPath + 'api/recorded/' + job.attrs.data.id +'.json',
+            uri: config.chinachuPath + 'api/recorded/' + job.attrs.data.id +'.json',
             method: 'PUT',
-            qs: {
+            timeout: 30 * 1000,
+            agent: false,
+            form: {
                 json: JSON.stringify(obj)
             }
-        }
+        };
         var status = true;
 
-        await new Promise((resolve, reject) => {
-            request(delopts, promiseCallback(resolve, reject));
-        }).catch(function (error) {
-            failJob(job,error);
-            status = false;
-        });
+        request(delopts,requestCallback);
 
-        if(!status) return;
-
-        await new Promise((resolve, reject) => {
-            request(putopts, promiseCallback(resolve, reject));
-        }).catch(function (error) {
-            failJob(job,error);
-        });
+        request(putopts,requestCallback);
+        } catch (err) {
+            console.error(`oops!` + err);
+        }
     });
 
     await new Promise(resolve => agenda.once('ready', resolve()));
@@ -84,6 +92,12 @@ async function run() {
 }
 
 run();
+
+function requestCallback(error, response, body) {
+  if (!error && response.statusCode == 200) {
+    console.log(body);
+  }
+}
 
 function promiseCallback(resolve, reject) {
     return function(error, res) {
