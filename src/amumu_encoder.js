@@ -19,7 +19,7 @@ async function encodedRequest(id,recorded){
         return Promise.reject(new Error('Failed del request statuscode:' + delRes.statusCode));
     }
 
-    var putRes = await request.put({
+    var putRes = await chinachuReq.put({
         uri: config.chinachuPath + 'api/recorded/' + id +'.json',
         form: {
             json: JSON.stringify({recorded: recorded.match(/^(.+)\.[^\.]+?$/)[1] + '.mp4'})
@@ -56,23 +56,18 @@ async function encode(id,recorded){
     });
 }
 
-function amumu(job,done) {
+async function amumu(job,done) {
     var id = job.attrs.data.id;
     var recorded = job.attrs.data.recorded;
 
-    encode(id,recorded)
-    .catch((err) => {
-        done(err);
-    });
-
-    encodedRequest(id,recorded)
-    .then(() => {
+    try{
+        await encode(id,recorded)
+        await encodedRequest(id,recorded)
         console.log("encode end");
         done();
-    })
-    .catch((err) => {
+    }catch(err) {
         done(err);
-    });
+    }
 }
 
 function preprocess(){

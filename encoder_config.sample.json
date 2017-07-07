@@ -1,7 +1,20 @@
 {
     "mongodbPath": "mongodb://localhost:27017/",
     "chinachuPath": "http://chinachu:10772/",
-    "recordedPath": "\\\\host\\share\\video",
-    "remoteAuthUser": "hoge",
-    "remoteAuthPass": "hoge"
+    "encoder": {
+        "process": "QSVEncC64",
+        "args": ["--avqsv", "--tff", "--vpp-deinterlace", "normal", "--icq", "27", "--quality", "best", "--bframes", "2", "-i", "<input>", "--output-thread", "1", "--output-buf", "128", "-o", "<output>", "--audio-codec", "aac"]
+    },
+    "input": {
+        "type": "smb",
+        "path": "\\\\localhost\\share\\video\\<file>.m2ts",
+        "authUser": "hoge",
+        "authPass": "hoge"
+    },
+    "output": {
+        "type": "smb",
+        "path": "\\\\localhost\\share\\video\\<file>.mp4",
+        "authUser": "hoge",
+        "authPass": "hoge"
+    }
 }
