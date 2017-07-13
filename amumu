@@ -8,8 +8,8 @@
 #     ./amumu <cmd> ...
 #
 
-NODE_VER=8.1.3
-NAVE_VER=2.2.3
+NODE_VER=8.1.1
+NAVE_VER=2.0.0
 
 main () {
   local SELF_PATH DIR SYM
@@ -85,12 +85,19 @@ amumu_setup () {
 }
 
 amumu_setup_encode () {
-  if [`ps aux | grep mongod | grep -v grep | wc -l` = 0 ]; then
+  recorded="$1"
+  if [ -z ${recorded} ] || ! [ -f ${recorded} ]; then
+    echo "file ${recorded} not found"
+    return 1
+  fi
+
+  count=`ps aux | grep mongod | grep -v grep | wc -l`
+  if [ ${count} = 0 ]; then
     amumu_db_start
   fi
 
   tmp=${AMUMU_DIR}/tmp.json
-  cat $1 |  jq 'map(select( .recorded | contains(".m2ts")) | {id, recorded})'  > ${tmp}
+  cat ${recorded} |  jq 'map(select( .recorded | contains(".m2ts")) | {id, recorded})'  > ${tmp}
   len=$(cat ${tmp} | jq length)
   for i in $( seq 0 $(($len - 1)) ); do
     raw=$(cat ${tmp} | jq .[$i])
@@ -104,11 +111,12 @@ amumu_setup_encode () {
 }
 
 amumu_setup_db () {
+  echo "Starting Mongodb..."
   ensure_dir "${DB_PATH}"
+  mongod --fork --logpath ${DB_PATH}/mongod.log --dbpath ${DB_PATH} --port 10782
+  echo "done"
 
-  [ "$(stat -c %U ${DB_PATH})" = mkngodb ] || chown -R mongodb ${DB_PATH}
-
-  mongod --fork --logpath ${AMUMU_DIR}/mongod.log && return 0
+  return 0
 }
 
 amumu_installer () {
@@ -192,8 +200,8 @@ amumu_installer_mongodb () {
   ensure_dir "$MONGO_DIR"
 
   echo "Installing mongodb"
-  wget -O https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.4.6.tgz | tar -zxvf mongodb-linux-x86_64-3.4.6.tgz
-  cp -R -n mongodb-linux-x86_64-3.4.6/ ${MONGO_DIR}
+  wget -O - https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.4.6.tgz | tar zxvf -
+  cp -R -n mongodb-linux-x86_64-3.4.6/* ${MONGO_DIR}
   rm -rfv mongodb-linux-x86_64-3.4.6/
 
   echo "done."

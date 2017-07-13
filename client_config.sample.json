@@ -1,3 +1,3 @@
 {
-    "mongodbPath": "mongodb://localhost:27017/"
+    "mongodbPath": "mongodb://localhost:10782/"
 }

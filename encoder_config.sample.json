@@ -1,5 +1,5 @@
 {
-    "mongodbPath": "mongodb://localhost:27017/",
+    "mongodbPath": "mongodb://localhost:10782/",
     "chinachuPath": "http://chinachu:10772/",
     "encoder": {
         "process": "QSVEncC64",
