@@ -8,7 +8,8 @@
 #     ./amumu <cmd> ...
 #
 
-NODE_VER=8.1.1
+NODE_VER=8.1.3
+NAVE_VER=2.2.3
 
 main () {
   local SELF_PATH DIR SYM
@@ -36,8 +37,9 @@ main () {
   NAVE_DIR=${AMUMU_DIR}/.nave
   NODE_PATH=${NAVE_DIR}/installed/${NODE_VER}/bin/node
   NPM_PATH=${NAVE_DIR}/installed/${NODE_VER}/bin/npm
-
-  #export PATH=$NAVE_DIR:${NAVE_DIR}/installed/${NODE_VER}/bin:$PATH
+  MONGO_DIR=${AMUMU_DIR}/.mongo
+  DB_PATH=${AMUMU_DIR}/db
+  export PATH=${MONGO_DIR}/bin:$NAVE_DIR:${NAVE_DIR}/installed/${NODE_VER}/bin:$PATH
 
   cd $AMUMU_DIR
 
@@ -47,7 +49,7 @@ main () {
   local cmd="$1"
   shift
   case $cmd in
-    client | installer )
+    client | installer | setup)
       cmd="amumu_$cmd"
       ;;
     * )
@@ -64,11 +66,92 @@ amumu_client () {
 
   ensure_dir log
 
-  node src/amumu_client.js "$1" "$2"> /dev/stdout 2>&1 | tee -a ./log/client
+  node src/amumu_client.js "$1" > /dev/stdout 2>&1 | tee -a ./log/client
   return ${PIPESTATUS[0]}
 }
 
+amumu_setup () {
+  local cmd="$1"
+  shift
+  case $cmd in
+    encode | db)
+      cmd="amumu_setup_$cmd"
+      ;;
+    * )
+      cmd="amumu_setup_help"
+      ;;
+  esac
+  $cmd "$@" && return 0
+}
+
+amumu_setup_encode () {
+  if [`ps aux | grep mongod | grep -v grep | wc -l` = 0 ]; then
+    amumu_db_start
+  fi
+
+  tmp=${AMUMU_DIR}/tmp.json
+  cat $1 |  jq 'map(select( .recorded | contains(".m2ts")) | {id, recorded})'  > ${tmp}
+  len=$(cat ${tmp} | jq length)
+  for i in $( seq 0 $(($len - 1)) ); do
+    raw=$(cat ${tmp} | jq .[$i])
+    recorded=$(echo ${raw} | jq '.recorded')
+    if eval [ -f "${recorded}" ]; then
+      amumu_client "${raw}"
+    fi
+  done
+
+  return 0
+}
+
+amumu_setup_db () {
+  ensure_dir "${DB_PATH}"
+
+  [ "$(stat -c %U ${DB_PATH})" = mkngodb ] || chown -R mongodb ${DB_PATH}
+
+  mongod --fork --logpath ${AMUMU_DIR}/mongod.log && return 0
+}
+
 amumu_installer () {
+  echo "Amumu Installer Menu:"
+  echo "[!] These are installed under all ${AMUMU_DIR}/..."
+  echo "[!] Recommend the Auto installation."
+
+  local PS3 item cmd
+  PS3="what do you install? > "
+  select item in \
+    "Auto (full)" "Node.js Environment and Modules" "mongodb"
+  do
+    echo "selected: ${item}"
+    case $item in
+      "Auto (full)" )
+        cmd="amumu_installer_auto_full"
+        ;;
+      "Node.js Environment and Modules" )
+        cmd="amumu_installer_node_full"
+        ;;
+      "mongodb" )
+        cmd="amumu_installer_mongodb"
+        ;;
+      * )
+        cmd="amumu_installer"
+        ;;
+    esac
+    $cmd && break
+  done
+
+
+  return 0
+}
+
+amumu_installer_auto_full () {
+  amumu_installer_node
+  amumu_installer_node_modules
+  amumu_installer_mongodb
+
+  return 0
+}
+
+amumu_installer_node_full () {
   amumu_installer_node
   amumu_installer_node_modules
 
@@ -80,9 +163,9 @@ amumu_installer_node () {
   ensure_dir "$NAVE_DIR"
 
   echo "Installing Node using Nave..."
-  wget -O - https://github.com/isaacs/nave/archive/v0.5.1.tar.gz | tar zxvf - -C $NAVE_DIR nave-0.5.1/nave.sh
-  mv $NAVE_DIR/nave-0.5.1/nave.sh $NAVE_DIR/
-  rm -rfv $NAVE_DIR/nave-0.5.1
+  wget -O - https://github.com/isaacs/nave/archive/v${NAVE_VER}.tar.gz | tar zxvf - -C $NAVE_DIR nave-${NAVE_VER}/nave.sh
+  mv ${NAVE_DIR}/nave-${NAVE_VER}/nave.sh ${NAVE_DIR}/
+  rm -rfv $NAVE_DIR/nave-${NAVE_VER}
   ${NAVE_DIR}/nave.sh install $NODE_VER
   rm -fv ${NAVE_DIR}/node
   ln -sv $NODE_PATH ${NAVE_DIR}/node
@@ -98,6 +181,20 @@ amumu_installer_node_modules () {
 
   npm install
   npm update
+
+  echo "done."
+
+  return 0
+}
+
+amumu_installer_mongodb () {
+  remove_dir "$MONGO_DIR"
+  ensure_dir "$MONGO_DIR"
+
+  echo "Installing mongodb"
+  wget -O https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.4.6.tgz | tar -zxvf mongodb-linux-x86_64-3.4.6.tgz
+  cp -R -n mongodb-linux-x86_64-3.4.6/ ${MONGO_DIR}
+  rm -rfv mongodb-linux-x86_64-3.4.6/
 
   echo "done."
 
@@ -123,34 +220,40 @@ amumu_help () {
 Usage: ./amumu <cmd> ...
 
 Commands:
+  installer               Install binaries
+  client <json>           Run a client.
+  setup                   Run db
+  help                    Output this information.
 
-client <file> <json>    Run a client.
-help                    Output this information.
+json:
+  amumu need keys 'id' and 'recorded' on chinachu.
+  amumu do not use other keys.
 
-File:
-
-amumu do not use.
-
-Json:
-
-amumu need keys 'id' and 'recorded' on chinachu.
-amumu do not use other keys.
-exemple
-{
-    "id": "0000id",
-    "recorded": "/usr/local/chinachu/recorded/hoge.m2ts",
-}
-
-
-Examples:
-#chinachu config.json
-{
-recordedCommand: amumu client
-}
+  exemple:
+  {
+      "id": "0000id",
+      "recorded": "/usr/local/chinachu/recorded/hoge.m2ts",
+  }
 
 EOF
 
   return 0
 }
+
+amumu_setup_help () {
+  cat <<EOF
+
+Usage: ./amumu setup <cmd> ...
+
+Commands:
+  encode <path/to/recorded.json>  Queue encode and run a mongodb if not run.
+  db                              Run a mongodb.
+  help                            Output this information.
+
+EOF
+
+  return 0
+}
+
 
 main "$@"

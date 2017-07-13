@@ -19,7 +19,7 @@ function queue(program) {
 var obj = {};
 
 try {
-    obj = JSON.parse(process.argv[3]);
+    obj = JSON.parse(process.argv[2]);
 } catch (e) {
     process.exit(-1);
 }
