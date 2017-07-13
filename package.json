@@ -5,7 +5,7 @@
   "main": "src/amumu_server.js",
   "scripts": {
     "client": "node src/amumu_client.js",
-    "encoder": "node src/amumu_encoder.js"
+    "encoder": "node src/amumu_server.js"
   },
   "repository": {
     "type": "git",

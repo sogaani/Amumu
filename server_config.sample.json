@@ -7,14 +7,15 @@
     },
     "input": {
         "type": "smb",
-        "path": "\\\\localhost\\share\\video\\<file>.m2ts",
+        "path": "\\\\host\\path\\to\\recorded\\<file>.m2ts",
         "authUser": "hoge",
         "authPass": "hoge"
     },
     "output": {
-        "type": "smb",
-        "path": "\\\\localhost\\share\\video\\<file>.mp4",
-        "authUser": "hoge",
-        "authPass": "hoge"
-    }
+        "type": "file",
+        "path": "/path/to/encorded/<file>.mp4"
+    },
+    "deleteEncodedFile": false,
+    "replaceRecordedToEncoded": false,
+    "workerLimit": 1
 }

@@ -1,27 +1,19 @@
-const Agenda = require('agenda');
-const { MongoClient } = require('mongodb');
+"use strict";
+
+const WorkQueue = require('./work_queue');
 const CONFIG_FILE = __dirname + '/../client_config.json';
 const config = require(CONFIG_FILE);
 
-function queue(program) {
-    const db = MongoClient.connect(config.mongodbPath + 'amumu',function(err, db) {
-        const agenda = new Agenda().mongo(db, 'jobs');
-
-        agenda.once('ready', function() {
-            var job = agenda.create('amumu_encode', {recorded: program.recorded, id: program.id});
-            job.save(function(err) {
-                process.exit(0);
-            });
-        });
-    });
-}
-
-var obj = {};
+var program = {};
 
 try {
-    obj = JSON.parse(process.argv[2]);
+    program = JSON.parse(process.argv[2]);
 } catch (e) {
     process.exit(-1);
 }
 
-queue(obj);
+const workQueue = new WorkQueue(config.mongodbPath);
+
+workQueue.queueJob('amumu_encode', { recorded: program.recorded, id: program.id }, (err) => {
+    process.exit(0);
+});
