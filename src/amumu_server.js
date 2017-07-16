@@ -3,13 +3,17 @@
 const child_process = require('child_process');
 const request = require('request-promise-native');
 const WorkQueue = require('./work_queue');
-const Encoder = require('./encoder');
+const EncoderFactory = require('./encoder/factory');
 const CONFIG_FILE = __dirname + '/../server_config.json';
 const config = require(CONFIG_FILE);
 const fs = require('fs');
 const chinachuReq = request.defaults({ simple: false, followRedirect: true, resolveWithFullResponse: true, });
 
 var encoder;
+
+config.workerLimit = config.workerLimit || 1;
+config.deleteEncodedFile = config.deleteEncodedFile || false;
+config.replaceRecordedToEncoded = config.replaceRecordedToEncoded || false;
 
 async function notifyEncoded(id, recorded) {
     if (config.deleteEncodedFile) {
@@ -40,30 +44,13 @@ async function amumu(job, done) {
         var recorded = job.attrs.data.recorded;
         var replacement = { "file": recorded.match(/\/([^\/]+?)\.[^\.]+?$/)[1], "id": id };
 
-        await encoder.encode(replacement);
+        await encoder.exec(replacement);
         await notifyEncoded(id, recorded)
         console.log("encode end");
         done();
     } catch (err) {
         done(err);
     }
-}
-
-function checkConfig() {
-    config.workerLimit = config.workerLimit || 1;
-    config.deleteEncodedFile = config.deleteEncodedFile || false;
-    config.replaceRecordedToEncoded = config.replaceRecordedToEncoded || false;
-}
-
-function preprocess() {
-    encoder = new Encoder(config.input.path, config.output.path, config.encoder.process, config.encoder.args);
-
-    ['input', 'output'].forEach((element, index, array) => {
-        var cnf = config[element];
-        if (cnf.type === 'smb') {
-            child_process.execSync('net use ' + cnf.path.match(/^(.+)\\/)[1] + ' ' + cnf.authPass + ' /user:' + cnf.authUser);
-        }
-    });
 }
 
 function startEncodeServer() {
@@ -74,6 +61,17 @@ function startEncodeServer() {
     workQueue.startWorker();
 }
 
-checkConfig();
-preprocess();
-startEncodeServer();
+function main() {
+    encoder = EncoderFactory(config);
+
+    ['input', 'output'].forEach((element, index, array) => {
+        var cnf = config[element];
+        if (cnf.type === 'smb') {
+            child_process.execSync('net use ' + cnf.path.match(/^(.+)\\/)[1] + ' ' + cnf.authPass + ' /user:' + cnf.authUser);
+        }
+    });
+
+    startEncodeServer();
+}
+
+main();

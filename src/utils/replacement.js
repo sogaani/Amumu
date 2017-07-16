@@ -1,3 +1,5 @@
+"use strict";
+
 function createRegexps(replacement) {
     var regexps = {};
     Object.keys(replacement).map(key => {
@@ -7,6 +9,7 @@ function createRegexps(replacement) {
 }
 
 exports.replaceString = function (string, replacement) {
+    if (!replacement) return string;
     let regexps = createRegexps(replacement);
     var ret = string;
     Object.keys(replacement).map(key => {
@@ -17,8 +20,9 @@ exports.replaceString = function (string, replacement) {
 }
 
 exports.replaceArray = function (array, replacement) {
-    var ret = [];
+    if (!replacement) return array;
     let regexps = createRegexps(replacement);
+    var ret = [];
 
     array.forEach((element, index, array) => {
         let tmp = element;

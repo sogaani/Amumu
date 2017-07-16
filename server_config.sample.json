@@ -2,8 +2,10 @@
     "mongodbPath": "mongodb://localhost:10782/",
     "chinachuPath": "http://chinachu:10772/",
     "encoder": {
-        "process": "QSVEncC64",
-        "args": ["--avqsv", "--tff", "--vpp-deinterlace", "normal", "--icq", "27", "--quality", "best", "--bframes", "2", "-i", "<input>", "--output-thread", "1", "--output-buf", "128", "-o", "<output>", "--audio-codec", "aac"]
+        "hardware": "qsv",
+        "quality":"medium",
+        "resize": "720",
+        "deinterlace": true
     },
     "input": {
         "type": "smb",

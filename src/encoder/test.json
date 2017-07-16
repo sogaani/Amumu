@@ -1,0 +1,17 @@
+{
+    "encoder": {
+        "debug": true,
+        "hardware": "nvenc",
+        "quality":"low",
+        "size": "720",
+        "deinterlace": true
+    },
+    "input": {
+        "type": "file",
+        "path": "test.m2ts"
+    },
+    "output": {
+        "type": "file",
+        "path": "test.mp4"
+    }
+}

@@ -4,3 +4,5 @@
 /node_modules/
 /.nave/
 /.mongodb/
+/src/encoder/test.mp4
+/src/encoder/test.m2ts
