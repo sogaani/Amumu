@@ -13,7 +13,7 @@ var encoder;
 
 config.workerLimit = config.workerLimit || 1;
 config.deleteEncodedFile = config.deleteEncodedFile || false;
-config.replaceRecordedToEncoded = config.replaceRecordedToEncoded || false;
+config.replaceRecordedWithEncoded = config.replaceRecordedWithEncoded || false;
 
 async function notifyEncoded(id, recorded) {
     if (config.deleteEncodedFile) {
@@ -24,7 +24,7 @@ async function notifyEncoded(id, recorded) {
         }
     }
 
-    if (config.replaceRecordedToEncoded) {
+    if (config.replaceRecordedWithEncoded) {
         var putRes = await chinachuReq.put({
             uri: config.chinachuPath + 'api/recorded/' + id + '.json',
             form: {
@@ -56,7 +56,7 @@ async function amumu(job, done) {
 function startEncodeServer() {
     const workQueue = new WorkQueue(config.mongodbPath);
 
-    workQueue.registerWorker('amumu_encode', amumu, config.workerLimit);
+    workQueue.registerWorker('amumu_encode', amumu, config.workerLimit || 1 );
 
     workQueue.startWorker();
 }
