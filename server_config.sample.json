@@ -2,9 +2,9 @@
     "mongodbPath": "mongodb://localhost:10782/",
     "chinachuPath": "http://chinachu:10772/",
     "encoder": {
-        "hardware": "qsv",
+        "hardware": "nvenc",
         "quality":"medium",
-        "resize": "720",
+        "size": "720",
         "deinterlace": true
     },
     "input": {
@@ -18,6 +18,6 @@
         "path": "/path/to/encorded/<file>.mp4"
     },
     "deleteEncodedFile": false,
-    "replaceRecordedToEncoded": false,
+    "replaceRecordedWithEncoded": false,
     "workerLimit": 1
 }

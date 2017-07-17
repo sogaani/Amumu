@@ -103,8 +103,6 @@ const FormatNvenc = {
 }
 
 class Ffmpeg {
-
-
     constructor(input, output, config) {
         this.process = process;
         this.input = input;
