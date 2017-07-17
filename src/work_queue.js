@@ -43,10 +43,10 @@ class WorkQueue extends EventEmitter {
 
     queueJob(name, data, callback) {
         if (this.isReady) {
-            _queueJob(name, data, callback);
+            this._queueJob(name, data, callback);
         } else {
             this.on('ready', () => {
-                _queueJob(name, data, callback);
+                this._queueJob(name, data, callback);
             });
         }
     }
