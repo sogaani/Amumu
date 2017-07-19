@@ -24,6 +24,7 @@
   "dependencies": {
     "agenda": "^0.9.1",
     "agendash": "^0.4.0",
+    "http-proxy": "^1.16.2",
     "mongodb": "^2.2.29",
     "node": "0.0.0",
     "request": "^2.81.0",
