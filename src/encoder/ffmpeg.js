@@ -103,12 +103,13 @@ const FormatNvenc = {
 }
 
 class Ffmpeg {
-    constructor(input, output, config) {
+    constructor(inputDir, outputDir, config) {
         this.process = process;
-        this.input = input;
-        this.output = output;
+        this.inputDir = inputDir;
+        this.outputDir = outputDir;
         this.debug = config.debug || null;
         this.config = config;
+        this.format = config.format || 'mp4';
     }
     async getInfo(input) {
         var ret;
@@ -130,7 +131,7 @@ class Ffmpeg {
         return ret;
     }
 
-    async exec(replacement) {
+    async exec(file) {
         let args = [];
         let format;
         switch (this.config.hardware) {
@@ -146,7 +147,7 @@ class Ffmpeg {
             default:
                 format = FormatCpu;
         };
-        let info = await this.getInfo(this.input);
+        let info = await this.getInfo(this.inputDir + file);
         console.log(info);
         //if (this.debug) args.push('-ss', '10');
         //if (this.debug) args.push('-loglevel', '56');
@@ -164,8 +165,8 @@ class Ffmpeg {
         args.push('-y');
         args.push('<output>');
 
-        let command = new Command(this.input, this.output, 'ffmpeg', args)
-        await command.exec(replacement);
+        let command = new Command(this.inputDir, this.outputDir, 'ffmpeg', args, this.format)
+        await command.exec(file);
     }
 }
 

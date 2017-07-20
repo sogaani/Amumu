@@ -42,9 +42,8 @@ async function amumu(job, done) {
     try {
         var id = job.attrs.data.id;
         var recorded = job.attrs.data.recorded;
-        var replacement = { "file": recorded.match(/\/([^\/]+?)\.[^\.]+?$/)[1], "id": id };
 
-        await encoder.exec(replacement);
+        await encoder.exec(recorded.match(/\/([^\/]+?)$/)[1]);
         await notifyEncoded(id, recorded)
         console.log("encode end");
         done();
@@ -64,7 +63,7 @@ function startEncodeServer() {
 function main() {
     encoder = EncoderFactory(config);
 
-    ['input', 'output'].forEach((element, index, array) => {
+    ['encoded', 'recorded'].forEach((element, index, array) => {
         var cnf = config[element];
         if (cnf.type === 'smb') {
             child_process.execSync('net use ' + cnf.path.match(/^(.+)\\/)[1] + ' ' + cnf.authPass + ' /user:' + cnf.authUser);

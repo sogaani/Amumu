@@ -1,6 +1,7 @@
 {
     "encoder": {
         "debug": true,
+        "format": "mp4",
         "hardware": "nvenc",
         "quality":"low",
         "size": "720",
@@ -8,10 +9,10 @@
     },
     "input": {
         "type": "file",
-        "path": "test.m2ts"
+        "path": "./"
     },
     "output": {
         "type": "file",
-        "path": "test.mp4"
+        "path": "./"
     }
 }

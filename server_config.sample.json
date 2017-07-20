@@ -2,18 +2,19 @@
     "mongodbPath": "mongodb://localhost:10782/",
     "chinachuPath": "http://chinachu:10772/",
     "encoder": {
+        "format": "mp4",
         "hardware": "nvenc",
-        "quality":"medium",
+        "quality": "medium",
         "size": "720",
         "deinterlace": true
     },
-    "input": {
+    "recorded": {
         "type": "smb",
         "path": "\\\\host\\path\\to\\recorded\\<file>.m2ts",
         "authUser": "hoge",
         "authPass": "hoge"
     },
-    "output": {
+    "encoded": {
         "type": "file",
         "path": "/path/to/encorded/<file>.mp4"
     },

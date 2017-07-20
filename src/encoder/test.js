@@ -9,7 +9,7 @@ config.output.path = __dirname + '\\' + config.output.path;
 var encoder = EncoderFactory(config);
 async function main(){
 try {
-    await encoder.exec(null);
+    await encoder.exec('test.m2ts');
 } catch (err) {
     console.log(err);
 }

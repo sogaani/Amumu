@@ -5,16 +5,17 @@ const child_process = require('child_process');
 
 class Command {
 
-    constructor(input, output, process, args) {
+    constructor(input, output, process, args, format) {
         this.process = process;
         this.args = args;
         this.input = input;
         this.output = output;
+        this.format = format;
     }
 
-    async exec(replacement) {
-        const input = replace.replaceString(this.input, replacement);
-        const output = replace.replaceString(this.output, replacement);
+    async exec(file) {
+        const input = this.input + file;
+        const output = this.output + file.replace(/\.[^.]+$/,`.${this.format}`);
 
         const args = replace.replaceArray(this.args, { "input": input, "output": output });
 
