@@ -126,7 +126,7 @@ amumu_setup_encode () {
   fi
 
   tmp=${AMUMU_DIR}/tmp.json
-  cat ${recorded} |  jq 'map(select( .recorded | contains(".m2ts")) | {id, recorded})'  > ${tmp}
+  cat ${recorded} |  jq 'map(select( .recorded | contains(".m2ts")))'  > ${tmp}
   len=$(cat ${tmp} | jq length)
   for i in $( seq 0 $(($len - 1)) ); do
     raw=$(cat ${tmp} | jq .[$i])
