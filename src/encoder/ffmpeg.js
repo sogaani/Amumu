@@ -125,13 +125,21 @@ class Ffmpeg {
                     reject(err);
                 }
             });
-        }).then((info) =>{
+        }).then((info) => {
             ret = info;
         });
         return ret;
     }
 
+    async execWithParam(file, deinterlac, size, quality) {
+        _exec(file, deinterlac, size, quality);
+    }
+
     async exec(file) {
+        _exec(file, this.config.deinterlac, this.config.size, this.config.quality);
+    }
+
+    async _exec(file, deinterlac, size, quality) {
         let args = [];
         let format;
         switch (this.config.hardware) {
@@ -151,14 +159,14 @@ class Ffmpeg {
         console.log(info);
         //if (this.debug) args.push('-ss', '10');
         //if (this.debug) args.push('-loglevel', '56');
-        if (format.config) Array.prototype.push.apply(args, format.config(this.config.deinterlace, this.config.size, info));
+        if (format.config) Array.prototype.push.apply(args, format.config(deinterlace, size, info));
         args.push('-i');
         args.push('<input>');
         //if (this.debug) args.push('-t', '60');
-        Array.prototype.push.apply(args, format.filter(this.config.deinterlace, this.config.size));
+        Array.prototype.push.apply(args, format.filter(deinterlace, size));
         args.push('-c:v');
         Array.prototype.push.apply(args, format.codec());
-        Array.prototype.push.apply(args, format.quality(this.config.quality));
+        Array.prototype.push.apply(args, format.quality(quality));
         args.push('-tune', 'zerolatency');
         args.push('-c:a', 'aac')
         args.push('-movflags', 'faststart');

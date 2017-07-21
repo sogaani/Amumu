@@ -3,8 +3,8 @@ const EncoderFactory = require('./factory');
 const CONFIG_FILE = __dirname + '/test.json';
 const config = require(CONFIG_FILE);
 
-config.input.path = __dirname + '\\' + config.input.path;
-config.output.path = __dirname + '\\' + config.output.path;
+config.recorded.path = __dirname + '\\' + config.recorded.path;
+config.encoded.path = __dirname + '\\' + config.encoded.path;
 
 var encoder = EncoderFactory(config);
 async function main(){

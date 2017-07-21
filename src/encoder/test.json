@@ -7,11 +7,11 @@
         "size": "720",
         "deinterlace": true
     },
-    "input": {
+    "recorded": {
         "type": "file",
         "path": "./"
     },
-    "output": {
+    "encoded": {
         "type": "file",
         "path": "./"
     }

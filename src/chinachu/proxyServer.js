@@ -1,45 +1,75 @@
+/*
+Copyright (c) 2012 Yuki KAN and Chinachu Project Contributors
+https://chinachu.moe/
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
 "use strict";
 
 const http = require('http');
 const httpProxy = require('http-proxy');
+const path = require('path');
 const fs = require('fs');
 const vm = require('vm');
+const url = require('url');
+const querystring = require('querystring');
+const child_process = require('child_process');
+const ChinachuClient = require('./client');
 
-exports.createProxyServer = (chinachuPath) => {
-  return new ChinachuProxy(chinachuPath);
+exports.createChinachuProxy = (chinachuPath, recordedPath, encodedPath) => {
+  return new ChinachuProxy(chinachuPath, recordedPath, encodedPath);
 }
 
 class ChinachuProxy {
-  constructor(chinachuPath) {
+  constructor(chinachuPath, recordedPath, encodedPath) {
     const self = this;
-    self.passthroughProxy = httpProxy.createProxyServer({});
+    self.recordedPath = recordedPath;
+    self.encodedPath = encodedPath;
+    self.chinachuPath = chinachuPath;
 
-    self.passthroughProxy.on('proxyReq', function (proxyReq, req, res, options) {
-      proxyReq.setHeader('X-Special-Proxy-Header', 'foobar');
-    });
+    self.chinachu = new ChinachuClient(chinachuPath);
+    self.passthroughProxy = httpProxy.createProxyServer({ target: chinachuPath });
 
     self.proxies = [];
 
-    fs.readdir('./proxy/', (err, files) => {
+    fs.readdir(__dirname + '/proxy/', (err, files) => {
       if (err) throw err;
       files.forEach((file) => {
-        let pattern = new RegExp('^/' + file.replace(/-/g, '/').replace(/:[^\/]+/g, '([^/]+)'));
-        let k = file.match(new RegExp(file.replace(/:[^\/]+/g, '([^/]+)')));
+        let pattern = new RegExp('^/' + file.replace(/-/g, '/').replace(/\.[^\.]+?$/g, '').replace(/@[^\/]+/g, '([^/]+)'));
+        let k = file.match(new RegExp(file.replace(/@[^-]+/g, '([^-]+)')));
         let param = [];
-        for (i = 0; i < k.length; i++) {
-          param.push(k[i].replace(':', ''));
+        for (let i = 0; i < k.length; i++) {
+          param.push(k[i].replace('@', ''));
         }
 
         let proxy = {
           pattern: pattern,
-          file: './proxy/' + file,
+          file: __dirname + '/proxy/' + file,
           param: param
         }
         self.proxies.push(proxy);
       });
     });
 
-    self.server = http.createServer(self._httpServer);
+    self.server = http.createServer((req, res) => { self._httpServer(req, res) });
   }
 
   listen(port) {
@@ -49,33 +79,39 @@ class ChinachuProxy {
   async _httpServer(req, res) {
     const self = this;
     let isProxied = false;
+    try {
+      self.proxies.forEach(async (proxy) => {
+        if (req.url.match(proxy.pattern) !== null) {
+          try {
+            isProxied = true;
 
-    self.proxies.forEach(async (proxy) => {
-      if (req.url.match(proxy.pattern) !== null) {
-        isProxied = true;
+            // ヘッダの確認
+            if (!req.headers.host) { return self._resErr(req, res, 400); }
 
-        // ヘッダの確認
-        if (!req.headers.host) { return self._resErr(400); }
+            // ファイルの確認
+            if (fs.existsSync(proxy.file) === false) { return self._resErr(req, res, 501); }
 
-        // ファイルの確認
-        if (fs.existsSync(proxy.file) === false) { return self._resErr(501); }
+            let query = await self._parseQuery(req);
 
-        // HTTPメソッド指定を上書き
-        if (query.method) {
-          req.method = query.method.toUpperCase();
-          delete query.method;
+            // HTTPメソッド指定を上書き
+            if (query.method) {
+              req.method = query.method.toUpperCase();
+              delete query.method;
+            }
+
+            console.log('proxy ' + req.url);
+            self._proxyCall(req, res, query, proxy);
+          } catch (e) {
+            console.log(e);
+          }
         }
-
-        let query = await self._parseQuery(req);
-
-        self._proxyCall(req, res, query, file);
-      }
-    });
-
-    if (!isProxied) {
-      self.passthroughProxy.web(req, res, {
-        target: chinachuPath
       });
+
+      if (!isProxied) {
+        self.passthroughProxy.web(req, res, { target: self.chinachuPath });
+      }
+    } catch (e) {
+      console.log(e);
     }
   }
 
@@ -132,11 +168,11 @@ class ChinachuProxy {
 
 
   _proxyCall(req, res, query, proxy) {
-
-
+    const self = this;
 
     let param = {}
-    for (i = 1; i < proxy.param.length; i++) {
+
+    for (let i = 1; i < proxy.param.length; i++) {
       param[proxy.param[i]] = req.url.match(proxy.pattern)[i];
     }
 
@@ -166,11 +202,23 @@ class ChinachuProxy {
     let sandbox = {
       request: req,
       response: res,
+      recordedPath: self.recordedPath,
+      encodedPath: self.encodedPath,
       path: path,
+      console: console,
       fs: fs,
       child_process: child_process,
-      config: config,
+      chinachu: self.chinachu,
       children: []
+    };
+
+    const onResponseClose = () => {
+
+      if (!isClosed) {
+        isClosed = true;
+      }
+
+      self._cleanup(sandbox, res, onResponseClose);
     };
 
     let isClosed = false;
@@ -184,18 +232,9 @@ class ChinachuProxy {
     sandbox.response.error = (code) => {
       isClosed = true;
 
-      self._resErr(res, code);
+      self._resErr(req, res, code);
 
-      self._cleanup(sandbox,res);
-    };
-
-    const onResponseClose = () => {
-
-      if (!isClosed) {
-        isClosed = true;
-      }
-
-      self._cleanup(sandbox,res);
+      self._cleanup(sandbox, res, onResponseClose);
     };
 
 
@@ -206,7 +245,7 @@ class ChinachuProxy {
       vm.runInNewContext(fs.readFileSync(proxy.file), sandbox, proxy.file);
     } catch (ee) {
       if (!isClosed) {
-        self._resErr(500);
+        self._resErr(req, res, 500);
         isClosed = true;
       }
 
@@ -214,7 +253,7 @@ class ChinachuProxy {
     }
   }
 
-  _resErr(res, code) {
+  _resErr(req, res, code) {
 
     if (res.headersSent === false) {
       res.writeHead(code, { 'content-type': 'text/plain' });
@@ -336,7 +375,7 @@ class ChinachuProxy {
     res.writeHead(code, head);
   };
 
-  _cleanup(sandbox,res) {
+  _cleanup(sandbox, res, handle) {
 
     setTimeout(() => {
 
@@ -350,7 +389,7 @@ class ChinachuProxy {
       sandbox = null;
     }, 1000);
 
-    res.removeListener('close', onResponseClose);
-    res.removeListener('finish', onResponseClose);
+    res.removeListener('close', handle);
+    res.removeListener('finish', handle);
   };
 }

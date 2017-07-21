@@ -1,3 +1,4 @@
 const proxy = require('./proxyServer');
+const config = require('../../server_config.json');
 
-proxy.createChinachuProxy('http://192.168.11.5:10772').listen(8080);
+proxy.createChinachuProxy(config.chinachuPath, config.recorded.path, config.encoded.path).listen(8080);
