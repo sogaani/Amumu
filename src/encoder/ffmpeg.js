@@ -102,6 +102,75 @@ const FormatNvenc = {
     }
 }
 
+async function _getInfo(input) {
+    var ret;
+    await new Promise((resolve, reject) => {
+        child_process.exec('ffprobe -v 0 -show_streams -of json "' + input + '"', function (err, std) {
+
+            if (err) {
+                reject(err);
+            }
+            try {
+                resolve(JSON.parse(std));
+            } catch (e) {
+                reject(err);
+            }
+        });
+    }).then((info) => {
+        ret = info;
+    });
+    return ret;
+}
+
+async function _createArgs(input, config) {
+    let args = [];
+    let format;
+    switch (config.hardware) {
+        case 'qsv':
+            format = FormatQsv;
+            break;
+        case 'vaapi':
+            format = FormatVaapi;
+            break;
+        case 'nvenc':
+            format = FormatNvenc;
+            break;
+        default:
+            format = FormatCpu;
+    };
+    let info = await _getInfo(input);
+    console.log(info);
+
+    if (format.config) Array.prototype.push.apply(args, format.config(config.deinterlace, config.size, info));
+    args.push('-i');
+    args.push('<input>');
+
+    Array.prototype.push.apply(args, format.filter(config.deinterlace, config.size));
+    args.push('-c:v');
+    Array.prototype.push.apply(args, format.codec());
+    Array.prototype.push.apply(args, format.quality(config.quality));
+    args.push('-tune', 'zerolatency');
+    args.push('-c:a', 'aac')
+    args.push('-movflags', 'faststart');
+    args.push('-y');
+    args.push('<output>');
+
+    return args;
+}
+
+exports.getStream = async (input, config) => {
+    let args = await _createArgs(input, config);
+
+    return Command.exec(input, 'pipe:1', 'ffmpeg', args, true);
+}
+
+exports.exec = async (input, output, config) => {
+    let args = await _createArgs(input, config);
+
+    return Command.exec(input, output, 'ffmpeg', args);
+}
+
+// deprecated
 class Ffmpeg {
     constructor(inputDir, outputDir, config) {
         this.process = process;
@@ -136,7 +205,7 @@ class Ffmpeg {
     }
 
     async exec(file) {
-        _exec(file, this.config.deinterlac, this.config.size, this.config.quality);
+        await _exec(file, this.config.deinterlac, this.config.size, this.config.quality);
     }
 
     async _exec(file, deinterlac, size, quality) {
@@ -156,7 +225,7 @@ class Ffmpeg {
                 format = FormatCpu;
         };
         let info = await this.getInfo(this.inputDir + file);
-        console.log(info);
+
         //if (this.debug) args.push('-ss', '10');
         //if (this.debug) args.push('-loglevel', '56');
         if (format.config) Array.prototype.push.apply(args, format.config(deinterlace, size, info));
@@ -178,4 +247,4 @@ class Ffmpeg {
     }
 }
 
-module.exports = Ffmpeg;
+//module.exports = Ffmpeg;

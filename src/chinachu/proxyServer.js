@@ -1,4 +1,6 @@
 /*
+MIT License
+
 Copyright (c) 2012 Yuki KAN and Chinachu Project Contributors
 https://chinachu.moe/
 
@@ -48,9 +50,9 @@ class ChinachuProxy {
     self.chinachu = new ChinachuClient(chinachuPath);
     self.passthroughProxy = httpProxy.createProxyServer({ target: chinachuPath });
 
-    self.proxies = [];
+    self.apiProxies = [];
 
-    fs.readdir(__dirname + '/proxy/', (err, files) => {
+    fs.readdir(__dirname + '/proxy/api', (err, files) => {
       if (err) throw err;
       files.forEach((file) => {
         let pattern = new RegExp('^/' + file.replace(/-/g, '/').replace(/\.[^\.]+?$/g, '').replace(/@[^\/]+/g, '([^/]+)'));
@@ -65,7 +67,7 @@ class ChinachuProxy {
           file: __dirname + '/proxy/' + file,
           param: param
         }
-        self.proxies.push(proxy);
+        self.apiProxies.push(proxy);
       });
     });
 
@@ -80,16 +82,14 @@ class ChinachuProxy {
     const self = this;
     let isProxied = false;
     try {
-      self.proxies.forEach(async (proxy) => {
+      // 1.apiのプロキシー
+      self.apiProxies.forEach(async (proxy) => {
         if (req.url.match(proxy.pattern) !== null) {
           try {
             isProxied = true;
 
             // ヘッダの確認
             if (!req.headers.host) { return self._resErr(req, res, 400); }
-
-            // ファイルの確認
-            if (fs.existsSync(proxy.file) === false) { return self._resErr(req, res, 501); }
 
             let query = await self._parseQuery(req);
 
@@ -100,17 +100,27 @@ class ChinachuProxy {
             }
 
             console.log('proxy ' + req.url);
-            self._proxyCall(req, res, query, proxy);
+            self._proxyApi(req, res, query, proxy);
           } catch (e) {
+            self._resErr(req, res, 500);
             console.log(e);
           }
         }
       });
 
+      // 2.webページのプロキシー
+      if (!isProxied && fs.existsSync(__dirname + '/web/' + req.url)) {
+        isProxied = true;
+        console.log('proxy ' + req.url);
+        _proxyPage(req, res, __dirname + '/web/' + req.url);
+      }
+
+      // 3.chinachuへ転送
       if (!isProxied) {
         self.passthroughProxy.web(req, res, { target: self.chinachuPath });
       }
     } catch (e) {
+      self._resErr(req, res, 500);
       console.log(e);
     }
   }
@@ -166,8 +176,58 @@ class ChinachuProxy {
     }
   }
 
+  _proxyPage(req, res, filename) {
+    const self = this;
 
-  _proxyCall(req, res, query, proxy) {
+    if (req.method !== 'HEAD' && req.method !== 'GET') {
+      res.setHeader('Allow', 'HEAD, GET');
+      return self._resErr(req, res, 405);
+    }
+
+    if (['ico', 'png'].indexOf(ext) !== -1) {
+      res.setHeader('Cache-Control', 'private, max-age=86400');
+    }
+
+    var fstat = fs.statSync(filename);
+
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Last-Modified', new Date(fstat.mtime).toUTCString());
+
+    if (req.headers['if-modified-since'] && req.headers['if-modified-since'] === new Date(fstat.mtime).toUTCString()) {
+      self._writeHead(res, 304, ext);
+
+      return res.end();
+    }
+
+    var range = {};
+    if (req.headers.range) {
+      var bytes = req.headers.range.replace(/bytes=/, '').split('-');
+      range.start = parseInt(bytes[0], 10);
+      range.end = parseInt(bytes[1], 10) || fstat.size - 1;
+
+      if (range.start > fstat.size || range.end > fstat.size) {
+        return self._resErr(req, res, 416);
+      }
+
+      res.setHeader('Content-Range', 'bytes ' + range.start + '-' + range.end + '/' + fstat.size);
+      res.setHeader('Content-Length', range.end - range.start + 1);
+
+      self._writeHead(res, 206, ext);
+
+    } else {
+      res.setHeader('Content-Length', fstat.size);
+
+      self._writeHead(res, 200, ext);
+    }
+
+    if (req.method === 'GET') {
+      fs.createReadStream(filename, range || {}).pipe(res);
+    } else {
+      res.end();
+    }
+  }
+
+  _proxyApi(req, res, query, proxy) {
     const self = this;
 
     let param = {}

@@ -4,11 +4,12 @@
     // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "type": "node",
             "request": "launch",
             "name": "amumu",
-            "program": "${workspaceRoot}/src/amumu_encoder.js",
+            "program": "${workspaceRoot}/src/encoder/test.js",
             "stopOnEntry": false
         }
     ]

@@ -26,6 +26,7 @@
     "agendash": "^0.4.0",
     "http-proxy": "^1.16.2",
     "mongodb": "^2.2.29",
+    "nedb": "^1.8.0",
     "node": "0.0.0",
     "request": "^2.81.0",
     "request-promise-native": "^1.0.4"

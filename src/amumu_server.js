@@ -3,13 +3,13 @@
 const child_process = require('child_process');
 const request = require('request-promise-native');
 const WorkQueue = require('./work_queue');
-const EncoderFactory = require('./encoder/factory');
+const EncodeManager = require('./encoder/manager');
 const CONFIG_FILE = __dirname + '/../server_config.json';
 const config = require(CONFIG_FILE);
 const fs = require('fs');
 const chinachuReq = request.defaults({ simple: false, followRedirect: true, resolveWithFullResponse: true, });
 
-var encoder;
+var manager;
 
 config.workerLimit = config.workerLimit || 1;
 config.deleteEncodedFile = config.deleteEncodedFile || false;
@@ -43,10 +43,15 @@ async function amumu(job, done) {
         var id = job.attrs.data.id;
         var recorded = job.attrs.data.recorded;
 
-        await encoder.exec(recorded.match(/\/([^\/]+?)$/)[1]);
-        await notifyEncoded(id, recorded)
-        console.log("encode end");
-        done();
+        code = await EncodeManager.encode(job.attrs.data);
+
+        if (code != 0) {
+            done('fail encode code:' + code);
+        } else {
+            await notifyEncoded(id, recorded)
+            console.log("encode end");
+            done();
+        }
     } catch (err) {
         done(err);
     }
@@ -55,13 +60,13 @@ async function amumu(job, done) {
 function startEncodeServer() {
     const workQueue = new WorkQueue(config.mongodbPath);
 
-    workQueue.registerWorker('amumu_encode', amumu, config.workerLimit || 1 );
+    workQueue.registerWorker('amumu_encode', amumu, config.limit || 1);
 
     workQueue.startWorker();
 }
 
 function main() {
-    encoder = EncoderFactory(config);
+    manager = new EncodeManager(config.recorded.path, config.encoded.path, config.limit || 1, config.encoder);
 
     ['encoded', 'recorded'].forEach((element, index, array) => {
         var cnf = config[element];
