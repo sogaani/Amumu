@@ -97,6 +97,26 @@ class EncodeManager {
         });
     }
 
+    getProgramById(id) {
+        const self = this;
+        return new Promise((resolve, reject) => {
+            self.db.find({ 'id': program.id }, function (err, docs) {
+                if (err) reject(err);
+                resolve(docs[0]);
+            });
+        });
+    }
+
+    getPrograms() {
+        const self = this;
+        return new Promise((resolve, reject) => {
+            self.db.find({}, function (err, docs) {
+                if (err) reject(err);
+                resolve(docs);
+            });
+        });
+    }
+
     _pushProgram(program) {
         const self = this;
         return new Promise((resolve, reject) => {

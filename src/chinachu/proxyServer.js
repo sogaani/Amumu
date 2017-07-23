@@ -48,7 +48,7 @@ class ChinachuProxy {
     self.chinachuPath = chinachuPath;
 
     self.chinachu = new ChinachuClient(chinachuPath);
-    self.passthroughProxy = httpProxy.createProxyServer({ target: chinachuPath });
+    self.passthroughProxy = httpProxy.createProxyServer({ target: chinachuPath, ws: true });
 
     self.apiProxies = [];
 
@@ -72,6 +72,11 @@ class ChinachuProxy {
     });
 
     self.server = http.createServer((req, res) => { self._httpServer(req, res) });
+
+    self.server.on('upgrade', function (req, socket, head) {
+      self.passthroughProxy.ws(req, socket, head);
+    });
+
   }
 
   listen(port) {
