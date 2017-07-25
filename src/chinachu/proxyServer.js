@@ -36,16 +36,18 @@ const querystring = require('querystring');
 const child_process = require('child_process');
 const ChinachuClient = require('./client');
 
-exports.createChinachuProxy = (chinachuPath, recordedPath, encodedPath) => {
-  return new ChinachuProxy(chinachuPath, recordedPath, encodedPath);
+exports.createChinachuProxy = (chinachuPath, recordedPath, encodedPath, manager, workQueue) => {
+  return new ChinachuProxy(chinachuPath, recordedPath, encodedPath, manager, workQueue);
 }
 
 class ChinachuProxy {
-  constructor(chinachuPath, recordedPath, encodedPath) {
+  constructor(chinachuPath, recordedPath, encodedPath, manager, workQueue) {
     const self = this;
     self.recordedPath = recordedPath;
     self.encodedPath = encodedPath;
     self.chinachuPath = chinachuPath;
+    self.manager = manager;
+    self.workQueue = workQueue;
 
     self.chinachu = new ChinachuClient(chinachuPath);
     self.passthroughProxy = httpProxy.createProxyServer({ target: chinachuPath, ws: true });
@@ -55,7 +57,7 @@ class ChinachuProxy {
     fs.readdir(__dirname + '/proxy/api', (err, files) => {
       if (err) throw err;
       files.forEach((file) => {
-        let pattern = new RegExp('^/' + file.replace(/-/g, '/').replace(/\.[^\.]+?$/g, '').replace(/@[^\/]+/g, '([^/]+)'));
+        let pattern = new RegExp('^/' + file.replace(/-/g, '/').replace(/\.[^\.]+?$/g, '\.[^\.]+?$').replace(/@[^\/]+/g, '([^/]+)'));
         let k = file.match(new RegExp(file.replace(/@[^-]+/g, '([^-]+)')));
         let param = [];
         for (let i = 0; i < k.length; i++) {
@@ -64,7 +66,7 @@ class ChinachuProxy {
 
         let proxy = {
           pattern: pattern,
-          file: __dirname + '/proxy/' + file,
+          file: __dirname + '/proxy/api/' + file,
           param: param
         }
         self.apiProxies.push(proxy);
@@ -88,7 +90,10 @@ class ChinachuProxy {
     let isProxied = false;
     try {
       // 1.apiのプロキシー
-      self.apiProxies.forEach(async (proxy) => {
+
+      const length = self.apiProxies.length;
+      for (let i = 0; i < length; i++) {
+        const proxy = self.apiProxies[i];
         if (req.url.match(proxy.pattern) !== null) {
           try {
             isProxied = true;
@@ -105,24 +110,32 @@ class ChinachuProxy {
             }
 
             console.log('proxy ' + req.url);
+
             self._proxyApi(req, res, query, proxy);
+
+            break;
           } catch (e) {
             self._resErr(req, res, 500);
             console.log(e);
           }
         }
-      });
+      }
 
       // 2.webページのプロキシー
-      if (!isProxied && fs.existsSync(__dirname + '/web/' + req.url)) {
+      let location = req.url;
+      if (location.match(/(\?.*)$/) !== null) { location = location.match(/^(.+)\?.*$/)[1]; }
+      if (location.match(/\/$/) !== null) { location += 'index.html'; }
+      if (!isProxied && fs.existsSync(path.join(__dirname, '/proxy/web', location))) {
         isProxied = true;
+
         console.log('proxy ' + req.url);
-        _proxyPage(req, res, __dirname + '/web/' + req.url);
+
+        self._proxyPage(req, res, path.join(__dirname, '/proxy/web', location));
       }
 
       // 3.chinachuへ転送
       if (!isProxied) {
-        self.passthroughProxy.web(req, res, { target: self.chinachuPath });
+        self.passthroughProxy.web(req, res);
       }
     } catch (e) {
       self._resErr(req, res, 500);
@@ -189,6 +202,11 @@ class ChinachuProxy {
       return self._resErr(req, res, 405);
     }
 
+    let ext = null;
+    if (filename.match(/[^\/]+\..+$/) !== null) {
+      ext = filename.split('.').pop();
+    }
+
     if (['ico', 'png'].indexOf(ext) !== -1) {
       res.setHeader('Cache-Control', 'private, max-age=86400');
     }
@@ -243,7 +261,6 @@ class ChinachuProxy {
 
     let location = req.url;
     if (location.match(/(\?.*)$/) !== null) { location = location.match(/^(.+)\?.*$/)[1]; }
-    if (location.match(/\/$/) !== null) { location += 'index.html'; }
 
     let ext = null;
     if (location.match(/[^\/]+\..+$/) !== null) {
@@ -256,13 +273,14 @@ class ChinachuProxy {
       delete query._method;
     }
 
-
-    res._end = res.end;
-    res.end = function () {
-      res.end = res._end;
-      res.end.apply(res, arguments);
-      res.emit('end');
-    };
+    /*
+        res._end = res.end;
+        res.end = function () {
+          res.end = res._end;
+          res.end.apply(res, arguments);
+          res.emit('end');
+        };
+    */
 
     let sandbox = {
       request: req,
@@ -272,10 +290,19 @@ class ChinachuProxy {
       path: path,
       console: console,
       fs: fs,
+      proxy: self.passthroughProxy,
+      manager: self.manager,
+      workQueue: self.workQueue,
       child_process: child_process,
       chinachu: self.chinachu,
+      setInterval: setInterval,
+      setTimeout: setTimeout,
+      clearInterval: clearInterval,
+      clearTimeout: clearTimeout,
       children: []
     };
+
+    let isClosed = false;
 
     const onResponseClose = () => {
 
@@ -286,7 +313,7 @@ class ChinachuProxy {
       self._cleanup(sandbox, res, onResponseClose);
     };
 
-    let isClosed = false;
+
 
     sandbox.request.query = query;
     sandbox.request.param = param;

@@ -15,6 +15,39 @@ class ChinachuClient {
         }
     }
 
+    async getRecorded() {
+        const uri = this.path + '/api/recorded.json';
+        const res = await this._request.get(uri);
+
+        if (res.statusCode !== 200) {
+            return Promise.reject(new Error('Failed get request from ' + uri + ' statuscode:' + res.statusCode));
+        }
+
+        try {
+            const recorded = JSON.parse(res.body);
+            return recorded;
+        } catch (e) {
+            return Promise.reject(e);
+        }
+    }
+
+
+    async cleanup() {
+        const uri = this.path + '/api/recorded.json';
+        const res = await this._request.put(uri);
+
+        if (res.statusCode !== 200) {
+            return Promise.reject(new Error('Failed put request from ' + uri + ' statuscode:' + res.statusCode));
+        }
+
+        try {
+            const recorded = JSON.parse(res.body);
+            return recorded;
+        } catch (e) {
+            return Promise.reject(e);
+        }
+    }
+
     async getProgramById(id) {
         const uri = this.path + '/api/recorded/' + id + '.json';
         const res = await this._request.get(uri);

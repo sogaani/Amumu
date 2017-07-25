@@ -13,6 +13,7 @@ class EncodeManager {
             this.encoders.push(new Encoder(inputDir, outputDir, config));
         }
         this.db = new Datastore({ filename: ENCODED_DATA_FILE, autoload: true })
+        this.db.ensureIndex({ fieldName: 'id', unique: true });
     }
 
     _isSame(encode, file, option) {
@@ -100,9 +101,13 @@ class EncodeManager {
     getProgramById(id) {
         const self = this;
         return new Promise((resolve, reject) => {
-            self.db.find({ 'id': program.id }, function (err, docs) {
+            self.db.find({ 'id': id }, function (err, docs) {
                 if (err) reject(err);
-                resolve(docs[0]);
+                if (docs.length) {
+                    resolve(docs[0]);
+                } else {
+                    resolve(null);
+                }
             });
         });
     }
@@ -117,7 +122,17 @@ class EncodeManager {
         });
     }
 
-    _pushProgram(program) {
+    removeProgram(program) {
+        const self = this;
+        self.db.remove({ _id: program._id }, {});
+    }
+
+    removeEncoded(program, encoded) {
+        const self = this;
+        self.db.update({ 'id': program.id }, { $pull: { encoded: encoded } }, {});
+    }
+
+    _pushEncoded(program, encoded) {
         const self = this;
         return new Promise((resolve, reject) => {
             self.db.find({ 'id': program.id }, function (err, docs) {
@@ -126,28 +141,42 @@ class EncodeManager {
 
                 if (docs.length) {
                     // update program
-                    self.db.update({ 'id': program.id }, program, {}, (err) => {
+                    console.log('update');
+                    self.db.update({ 'id': program.id }, { $addToSet: { encoded: encoded } }, {}, (err) => {
                         if (err) reject(err);
+                        resolve(program);
                     });
 
                 } else {
                     // new program
+                    console.log('new');
                     self.db.insert(program, (err) => {
                         if (err) reject(err);
+                        resolve(program);
                     });
                 }
-
-                resolve(program);
             });
         });
     }
 
     async encode(program) {
-
         const self = this;
+
+        let config = Object.assign({}, this.default);
+        let appendix;
+
+        if (program.option) {
+            config = Object.assign(config, program.option);
+            appendix = '_' + config.size + '_' + config.quarity + '_' + config.hardware;
+        }
+        appendix = '.' + config.format;
+
         const file = program.recorded.match(/\/([^\/]+?)$/)[1];
-        const encoder = await self._getEncoder(10, file, this.default);
-        const proc = await encoder.encode(file, this.default);
+        const input = program.reencode ? this.outputDir + file : this.inputDir + file;
+        const output = this.outputDir + file.replace(/\.[^.]+$/, '') + appendix;
+
+        const encoder = await self._getEncoder(10, output, this.default);
+        const proc = await encoder.encode(input, output, config);
 
         return new Promise((resolve, reject) => {
             encoder.once('exit', async (err, encoded) => {
@@ -155,9 +184,10 @@ class EncodeManager {
                 if (err) {
                     reject(err);
                 } else {
-                    program.encoded = encoded;
+                    program.recorded = encoded.file;
+                    program.encoded = [];
 
-                    await self._pushProgram(program);
+                    await self._pushEncoded(program, encoded);
 
                     resolve();
                 }

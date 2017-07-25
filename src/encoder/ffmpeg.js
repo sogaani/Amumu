@@ -158,12 +158,6 @@ async function _createArgs(input, config) {
     return args;
 }
 
-exports.getStream = async (input, config) => {
-    let args = await _createArgs(input, config);
-
-    return Command.exec(input, 'pipe:1', 'ffmpeg', args, true);
-}
-
 exports.exec = async (input, output, config) => {
     let args = await _createArgs(input, config);
 

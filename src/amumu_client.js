@@ -14,6 +14,6 @@ try {
 
 const workQueue = new WorkQueue(config.mongodbPath);
 
-workQueue.queueJob('amumu_encode', program, (err) => {
+workQueue.queueJob('amumu_encode', program, {}, (err) => {
     process.exit(0);
 });

@@ -95,15 +95,14 @@ P = Class.create(P, {
 
         var set = JSON.parse(localStorage.getItem('program.watch.settings') || '{}');
         var rtype = program.recorded.match(/\.([^\.]+?$)/)[1];
-        set.ext = rtype;
-        if (!set.s) {
-            set.s = '1280x720';
+
+        set.encoded = 'org';
+
+        if (!set.size) {
+            set.size = '';
         }
-        if (!set['b:v']) {
-            set['b:v'] = 'copy';
-        }
-        if (!set['b:a']) {
-            set['b:a'] = 'copy';
+        if (!set.quality) {
+            set.quality = 'high';
         }
 
         var buttons = [];
@@ -120,6 +119,14 @@ P = Class.create(P, {
                         var d = this.d = this.form.getResult();
                         saveSettings(d);
 
+                        if (d.encoded === 'new') {
+                            new flagrate.Modal({
+                                title: 'エラー',
+                                text: 'エンコードしながら再生はサポートしていません。'
+                            }).show();
+                            return;
+                        }
+
                         var url = location.host + location.pathname.replace(/\/[^\/]*$/, '');
 
                         if (program._isRecording) {
@@ -128,7 +135,10 @@ P = Class.create(P, {
                             url += '/api/recorded/';
                         }
 
-                        url += program.id + '/watch.' + d.ext + '?' + Object.toQueryString(d);
+                        var ext = rtype;
+                        if (d.encoded) ext = 'mp4';
+
+                        url += program.id + '/watch.' + ext + '?' + Object.toQueryString(d);
 
                         if (/Android/.test(navigator.userAgent) === true) {
                             location.href = "intent://" + url + "#Intent;package=org.videolan.vlc;type=video;scheme=" + location.protocol.replace(':', '') + ';end';
@@ -150,7 +160,15 @@ P = Class.create(P, {
                         var d = this.d = this.form.getResult();
                         saveSettings(d);
 
-                        if (d.ext === 'm2ts') {
+                        if (d.encoded === 'new') {
+                            new flagrate.Modal({
+                                title: 'エラー',
+                                text: 'エンコードしながら再生はサポートしていません。'
+                            }).show();
+                            return;
+                        }
+
+                        if (rtype === 'm2ts') {
                             var url = location.host + location.pathname.replace(/\/[^\/]*$/, '');
 
                             if (program._isRecording) {
@@ -159,7 +177,10 @@ P = Class.create(P, {
                                 url += '/api/recorded/';
                             }
 
-                            url += program.id + '/watch.' + d.ext + '?' + Object.toQueryString(d);
+                            var ext = rtype;
+                            if (d.encoded) ext = 'mp4';
+
+                            url += program.id + '/watch.' + ext + '?' + Object.toQueryString(d);
 
                             location.href = "vlc:// " + location.protocol + '//' + url;
                         } else {
@@ -180,6 +201,14 @@ P = Class.create(P, {
 
                         var d = this.form.getResult();
                         saveSettings(d);
+
+                        if (d.encoded === 'new') {
+                            new flagrate.Modal({
+                                title: 'エラー',
+                                text: 'エンコードしながら再生はサポートしていません。'
+                            }).show();
+                            return;
+                        }
 
                         var url = d.prefix = location.protocol + '//' + location.host + location.pathname.replace(/\/[^\/]*$/, '');
 
@@ -210,9 +239,64 @@ P = Class.create(P, {
                         var d = this.form.getResult();
                         saveSettings(d);
 
+                        var ext = rtype;
+                        if (d.encoded) ext = 'mp4';
+
+                        if (d.encoded === 'new') {
+                            new flagrate.Modal({
+                                title: 'エラー',
+                                text: 'エンコードしながらダウンロードはサポートしていません。'
+                            }).show();
+                            return;
+                        }
+
                         d.prefix = location.protocol + '//' + location.host + '/api/recording/' + program.id + '/';
                         d.mode = 'download';
-                        location.href = './api/recorded/' + program.id + '/watch.' + d.ext + '?' + Object.toQueryString(d);
+                        location.href = './api/recorded/' + program.id + '/watch.' + ext + '?' + Object.toQueryString(d);
+                    }.bind(this));
+                }.bind(this)
+            });
+
+            buttons.push({
+                label: 'エンコード',
+                color: '@black',
+                onSelect: function (e, modal) {
+
+                    this.form.validate(function (success) {
+                        console.log(success);
+                        if (!success) { return; }
+
+                        var d = this.d = this.form.getResult();
+
+                        saveSettings(d);
+
+                        if (d.encoded != 'new') {
+                            new flagrate.Modal({
+                                title: 'エラー',
+                                text: '新規エンコードを選択してください'
+                            }).show();
+                            return;
+                        }
+
+                        new Ajax.Request('./api/recorded/' + program.id + '/encode.mp4', {
+                            method: 'put',
+                            parameters: d,
+                            onComplete: function () {
+                                modal.close();
+                            },
+                            onSuccess: function () {
+                                new flagrate.Modal({
+                                    title: '成功',
+                                    text: 'エンコードのキューイングに成功しました'
+                                }).show();
+                            },
+                            onFailure: function (t) {
+                                new flagrate.Modal({
+                                    title: '失敗',
+                                    text: 'エンコードのキューイングに失敗しました (' + t.status + ')'
+                                }).show();
+                            }
+                        });
                     }.bind(this));
                 }.bind(this)
             });
@@ -226,183 +310,140 @@ P = Class.create(P, {
             buttons: buttons
         }).show();
 
-        var exts = [];
-
-        exts.push({
-            label: 'M2TS',
-            value: 'm2ts'
-        });
-        exts.push({
-            label: 'MP4',
-            value: 'mp4'
+        var encoded = [];
+        encoded.push({
+            label: 'オリジナル',
+            value: 'org'
         });
 
-        /* develop encoder to support webM
-        if (!Prototype.Browser.MobileSafari) {
-            exts.push({
-                label: 'WebM',
-                value: 'webm'
+        if (program.encoded) {
+            program.encoded.forEach((element, index) => {
+                encoded.push({
+                    label: 'エンコード:' + index,
+                    value: index
+                });
             });
         }
-        */
 
-        this.form = flagrate.createForm({
-            fields: [
-                {
-                    key: "ext",
-                    label: "コンテナ形式",
-                    input: {
-                        type: "radios",
-                        isRequired: true,
-                        val: set.ext,
-                        items: exts
-                    }
-                },
-                {
-                    pointer: "/c:v",
-                    label: "映像コーデック",
-                    input: {
-                        type: "radios",
-                        isRequired: true,
-                        val: set['c:v'],
-                        items: [
-                            {
-                                label: '無変換',
-                                value: 'copy'
-                            }
-                        ]
-                    },
-                    depends: [
-                        { key: "ext", val: "m2ts" }
+        encoded.push({
+            label: '新規エンコード',
+            value: 'new'
+        });
+
+
+        var fields = [
+            {
+                key: "encoded",
+                label: "ファイル",
+                input: {
+                    type: "radios",
+                    isRequired: true,
+                    val: set.encoded,
+                    items: encoded
+                }
+            },
+            {
+                key: 'size',
+                label: 'サイズ',
+                input: {
+                    type: 'select',
+                    isRequired: true,
+                    val: set.size,
+                    items: [
+                        {
+                            label: '576 (WSVGA)',
+                            value: '576'
+                        },
+                        {
+                            label: '720 (HD)',
+                            value: '720'
+                        },
+                        {
+                            label: '1080 (FHD)',
+                            value: '1080'
+                        },
+                        {
+                            label: '無変換',
+                            value: ''
+                        }
                     ]
                 },
-                /* develop encoder to support webM
-                {
-                    pointer: '/c:v',
-                    label: '映像コーデック',
-                    input: {
-                        type: 'radios',
-                        isRequired: true,
-                        val: "vp9",
-                        items: [
-                            {
-                                label: 'VP9',
-                                value: 'vp9'
-                            }
-                        ]
-                    },
-                    depends: [
-                        { key: 'ext', val: 'webm' }
+                depends: [
+                    { key: 'encoded', val: 'new' }
+                ]
+            },
+            {
+                key: 'quality',
+                label: '品質',
+                input: {
+                    type: 'radios',
+                    isRequired: true,
+                    val: set.quality,
+                    items: [
+                        {
+                            label: 'high',
+                            value: 'high'
+                        },
+                        {
+                            label: 'medium',
+                            value: 'medium'
+                        },
+                        {
+                            label: 'low',
+                            value: 'low'
+                        }
                     ]
                 },
-                */
-                {
-                    pointer: '/c:v',
-                    label: '映像コーデック',
-                    input: {
-                        type: 'radios',
-                        isRequired: true,
-                        val: set['c:v'],
-                        items: [
-                            {
-                                label: '無変換',
-                                value: 'copy'
-                            },,
-                            {
-                                label: 'H.264',
-                                value: 'h264'
-                            }
-                        ]
-                    },
-                    depends: [
-                        { key: 'ext', val: 'mp4' }
-                    ]
-                },
-                {
-                    pointer: '/c:a',
-                    label: '音声コーデック',
-                    input: {
-                        type: 'radios',
-                        isRequired: true,
-                        val: set['c:a'],
-                        items: [
-                            {
-                                label: '無変換',
-                                value: 'copy'
-                            }
-                        ]
-                    },
-                    depends: [
-                        { key: 'ext', val: 'mp4' },
-                        { pointer: '/c:v', val: 'copy' }
-                    ]
-                },
-                {
-                    key: 's',
+                depends: [
+                    { key: 'encoded', val: 'new' }
+                ]
+            }
+        ];
+
+        if (program.encoded) {
+            program.encoded.forEach((element, index) => {
+                fields.push({
+                    key: 'size',
                     label: 'サイズ',
                     input: {
-                        type: 'select',
+                        type: 'radios',
                         isRequired: true,
-                        val: set.s,
+                        val: set.size,
                         items: [
                             {
-                                label: '576p (WSVGA)',
-                                value: '1024x576'
-                            },
-                            {
-                                label: '720p (HD)',
-                                value: '1280x720'
-                            },
-                            {
-                                label: '1080p (FHD)',
-                                value: '1920x1080'
-                            },
-                            {
-                                label: '無変換',
-                                value: ''
+                                label: element.config.size,
+                                value: element.config.size
                             }
                         ]
                     },
                     depends: [
-                        { pointer: '/c:v', val: 'copy', op: '!==' }
+                        { key: 'encoded', val: index }
                     ]
-                },
-                {
-                    key: 'b:v',
-                    label: '映像ビットレート',
+                });
+
+                fields.push({
+                    key: 'quality',
+                    label: '品質',
                     input: {
                         type: 'radios',
                         isRequired: true,
-                        val: set['b:v'],
+                        val: set.quality,
                         items: [
                             {
-                                label: '256kbps',
-                                value: '256k'
-                            },
-                            {
-                                label: '512kbps',
-                                value: '512k'
-                            },
-                            {
-                                label: '1Mbps',
-                                value: '1M'
-                            },
-                            {
-                                label: '2Mbps',
-                                value: '2M'
-                            },
-                            {
-                                label: '3Mbps',
-                                value: '3M'
+                                label: element.config.quality,
+                                value: element.config.quality
                             }
                         ]
                     },
                     depends: [
-                        { pointer: '/c:v', val: 'copy', op: '!==' }
+                        { key: 'encoded', val: index }
                     ]
-                }
-            ]
-        });
+                });
+
+            });
+        }
+
+        this.form = flagrate.createForm({ fields: fields });
 
         this.form.insertTo(modal.content);
 

@@ -31,7 +31,7 @@ class WorkQueue extends EventEmitter {
         this.agenda.define(name, { concurrency: limit, lockLimit: limit, lockLifetime: 120 * 60 * 1000 }, (job, done) => worker(job, done));
     }
 
-    startWorker(){
+    startWorker() {
         if (this.isReady) {
             this.agenda.start();
         } else {
@@ -41,18 +41,19 @@ class WorkQueue extends EventEmitter {
         }
     }
 
-    queueJob(name, data, callback) {
+    queueJob(name, data, option, callback) {
         if (this.isReady) {
-            this._queueJob(name, data, callback);
+            this._queueJob(name, data, option, callback);
         } else {
             this.on('ready', () => {
-                this._queueJob(name, data, callback);
+                this._queueJob(name, data, option, callback);
             });
         }
     }
 
-    _queueJob(name, data, callback) {
+    _queueJob(name, data, option, callback) {
         var job = this.agenda.create(name, data);
+        if (option && option.priority) job.priority(option.priority);
         job.save(callback);
     }
 }

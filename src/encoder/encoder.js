@@ -29,38 +29,25 @@ class Encoder extends EventEmitter {
         return proc;
     }
 
-
-    async getStream(file, option) {
-
-        const proc = this._process(async () => {
-            let input = this.inputDir + file;
-            return await ffmpeg.getStream(input, option);
-        });
-
-        return proc;
-    }
-
-    async encode(file, option) {
-        let input = this.inputDir + file;
-        let output = this.outputDir + file.replace(/\.[^.]+$/, `.${option.format}`)
+    async encode(input, output, config) {
 
         const proc = await this._process(async () => {
-            option = option || this.default;
+            config = config || this.default;
 
             let proc;
 
             try {
-                if (option.process) { // ユーザ定義のエンコーダー
+                if (config.process) { // ユーザ定義のエンコーダー
                     proc = command.exec(
                         input,
                         output,
-                        option.process,
-                        option.args);
+                        config.process,
+                        config.args);
                 } else {                    // ffmpeg
                     proc = await ffmpeg.exec(
                         input,
                         output,
-                        option);
+                        config);
                 }
             } catch (e) {
                 console.log(e);
@@ -75,7 +62,11 @@ class Encoder extends EventEmitter {
             if (code != 0) {
                 err = new Error('Encode process exit with code:' + code);
             }
-            this.emit('exit', err, output);
+            let encoded = {
+                file: output,
+                config: config
+            };
+            this.emit('exit', err, encoded);
         });
 
         return proc;

@@ -10,6 +10,7 @@ const fs = require('fs');
 const chinachuReq = request.defaults({ simple: false, followRedirect: true, resolveWithFullResponse: true, });
 
 var manager;
+var workQueue;
 
 config.workerLimit = config.workerLimit || 1;
 config.deleteEncodedFile = config.deleteEncodedFile || false;
@@ -40,25 +41,25 @@ async function notifyEncoded(id, recorded) {
 
 async function amumu(job, done) {
     try {
-        var id = job.attrs.data.id;
-        var recorded = job.attrs.data.recorded;
+        const id = job.attrs.data.id;
+        const recorded = job.attrs.data.recorded;
 
-        code = await EncodeManager.encode(job.attrs.data);
+        await manager.encode(job.attrs.data);
+        await notifyEncoded(id, recorded);
 
-        if (code != 0) {
-            done('fail encode code:' + code);
-        } else {
-            await notifyEncoded(id, recorded)
-            console.log("encode end");
-            done();
-        }
+        console.log("encode end");
+        done();
+
     } catch (err) {
-        done(err);
+        console.log(err);
+        workQueue.queueJob('amumu_encode', job.attrs.data, {}, () => {
+            done(err);
+        });
     }
 }
 
 function startEncodeServer() {
-    const workQueue = new WorkQueue(config.mongodbPath);
+    workQueue = new WorkQueue(config.mongodbPath);
 
     workQueue.registerWorker('amumu_encode', amumu, config.limit || 1);
 
@@ -68,7 +69,7 @@ function startEncodeServer() {
 function main() {
     manager = new EncodeManager(config.recorded.path, config.encoded.path, config.limit || 1, config.encoder);
 
-    ['encoded', 'recorded'].forEach((element, index, array) => {
+    ['encoded', 'recorded'].forEach((element) => {
         var cnf = config[element];
         if (cnf.type === 'smb') {
             child_process.execSync('net use ' + cnf.path.match(/^(.+)\\/)[1] + ' ' + cnf.authPass + ' /user:' + cnf.authUser);

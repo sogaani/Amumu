@@ -9,7 +9,7 @@
             "type": "node",
             "request": "launch",
             "name": "amumu",
-            "program": "${workspaceRoot}/src/encoder/test.js",
+            "program": "${workspaceRoot}/src/chinachu/test.js",
             "stopOnEntry": false
         }
     ]
