@@ -2,19 +2,28 @@
 
 	var program = await manager.getProgramById(request.param.id);
 
-	if (program === null) return proxy.web(request, response);
+	if (program === null || !request.query.encoded || request.query.encoded === '') return proxy.web(request, response);
 
 	if (program.tuner && program.tuner.isScrambling) return response.error(409);
 
 	let file = program.recorded;
 
 	try {
-		if (request.query && request.query.encoded) file = program.encoded[request.query.encoded].file;
+		if (request.query && request.query.encoded) {
+			switch (request.query.encoded) {
+				case 'org':
+					file = encodedPath + program.encoded_original.file;
+					break;
+				default:
+					file = encodedPath + program.encoded[parseInt(request.query.encoded, 10)].file;
+					break;
+			}
+		}
 	} catch (e) {
-		file = null;
+		return response.error(405);
 	}
 
-	if (!file || !fs.existsSync(file)) return response.error(410);
+	if (!fs.existsSync(file)) return response.error(410);
 
 	response.head(200);
 
@@ -61,7 +70,7 @@
 		,
 		function (err, stdout, stderr) {
 			if (err) {
-				util.log(err);
+				console.log(err);
 				return response.error(503);
 			}
 

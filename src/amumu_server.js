@@ -18,7 +18,7 @@ config.replaceRecordedWithEncoded = config.replaceRecordedWithEncoded || false;
 
 async function notifyEncoded(id, recorded) {
     if (config.deleteEncodedFile) {
-        var delRes = await chinachuReq.del(config.chinachuPath + 'api/recorded/' + id + '/file.json');
+        var delRes = await chinachuReq.del(config.chinachuPath + '/api/recorded/' + id + '/file.json');
 
         if (delRes.statusCode !== 200) {
             return Promise.reject(new Error('Failed del request statuscode:' + delRes.statusCode));
@@ -27,7 +27,7 @@ async function notifyEncoded(id, recorded) {
 
     if (config.replaceRecordedWithEncoded) {
         var putRes = await chinachuReq.put({
-            uri: config.chinachuPath + 'api/recorded/' + id + '.json',
+            uri: config.chinachuPath + '/api/recorded/' + id + '.json',
             form: {
                 json: JSON.stringify({ recorded: recorded.match(/^(.+)\.[^\.]+?$/)[1] + '.mp4' })
             }
@@ -44,7 +44,7 @@ async function amumu(job, done) {
         const id = job.attrs.data.id;
         const recorded = job.attrs.data.recorded;
 
-        await manager.encode(job.attrs.data);
+        await manager.encode(job.attrs.data.program,job.attrs.data.config);
         await notifyEncoded(id, recorded);
 
         console.log("encode end");
@@ -67,7 +67,7 @@ function startEncodeServer() {
 }
 
 function main() {
-    manager = new EncodeManager(config.recorded.path, config.encoded.path, config.limit || 1, config.encoder);
+    manager = new EncodeManager(config.recorded.path, config.encoded.path, config.limit || 1, config.encoder, config.chinachuPath);
 
     ['encoded', 'recorded'].forEach((element) => {
         var cnf = config[element];

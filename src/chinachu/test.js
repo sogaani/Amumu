@@ -13,4 +13,4 @@ const manager = new EncodeManager(config.recorded.path, config.encoded.path, 1, 
         child_process.execSync('net use ' + cnf.path.match(/^(.+)\\/)[1] + ' ' + cnf.authPass + ' /user:' + cnf.authUser);
     }
 });
-proxy.createChinachuProxy(config.chinachuPath, config.recorded.path, config.encoded.path, manager,workQueue).listen(8080);
+proxy.createChinachuProxy(config.chinachuPath, config.recorded.path, config.encoded.path, manager, workQueue).listen(8080);

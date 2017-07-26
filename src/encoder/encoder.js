@@ -14,16 +14,25 @@ class Encoder extends EventEmitter {
 
 
     async _process(func) {
-        if (this.isUsing) {
+        const self = this;
+
+        if (self.isUsing) {
             return Promise.reject(new Error('other user is using encoder'));
         }
 
-        this.isUsing = true;
+        self.isUsing = true;
 
         const proc = await func();
 
         proc.once('exit', (code) => {
-            this.isUsing = false;
+            self.isUsing = false;
+
+            let err = null;
+            if (code != 0) {
+                err = new Error('Encode process exit with code:' + code);
+            }
+
+            self.emit('exit', err);
         });
 
         return proc;
@@ -31,7 +40,7 @@ class Encoder extends EventEmitter {
 
     async encode(input, output, config) {
 
-        const proc = await this._process(async () => {
+        return await this._process(async () => {
             config = config || this.default;
 
             let proc;
@@ -53,23 +62,8 @@ class Encoder extends EventEmitter {
                 console.log(e);
                 this.isUsing = false;
             }
-            console.log("return");
             return proc
         });
-
-        proc.once('exit', (code) => {
-            let err = null;
-            if (code != 0) {
-                err = new Error('Encode process exit with code:' + code);
-            }
-            let encoded = {
-                file: output,
-                config: config
-            };
-            this.emit('exit', err, encoded);
-        });
-
-        return proc;
     }
 }
 

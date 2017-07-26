@@ -4,19 +4,28 @@ async function init() {
 	try {
 		var program = await manager.getProgramById(request.param.id);
 
-		if (program === null) return proxy.web(request, response);
+		if (program === null || !request.query.encoded || request.query.encoded === '') return proxy.web(request, response);
 
 		if (program.tuner && program.tuner.isScrambling) return response.error(409);
 
 		let file = program.recorded;
 
 		try {
-			if (request.query && request.query.encoded) file = program.encoded[request.query.encoded].file;
+			if (request.query && request.query.encoded) {
+				switch (request.query.encoded) {
+					case 'org':
+						file = encodedPath + program.encoded_original.file;
+						break;
+					default:
+						file = encodedPath + program.encoded[parseInt(request.query.encoded, 10)].file;
+						break;
+				}
+			}
 		} catch (e) {
-			file = null;
+			return response.error(405);
 		}
 
-		if (!file || !fs.existsSync(file)) return response.error(410);
+		if (!fs.existsSync(file)) return response.error(410);
 
 		// probing
 		child_process.exec('ffprobe -v 0 -show_format -of json "' + file + '"', function (err, std) {
@@ -69,7 +78,7 @@ function main(avinfo, program, file) {
 			console.log('STREAMING: ' + request.url);
 
 			// Caluculate Total Size
-			var isize = parseInt(avinfo.format.size, 10);
+			var tsize = parseInt(avinfo.format.size, 10);
 
 			if (request.query.mode == 'download') {
 				var pi = path.parse(file);

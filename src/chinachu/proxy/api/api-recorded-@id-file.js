@@ -2,17 +2,28 @@
 
 	var program = await manager.getProgramById(request.param.id);
 
-	if (program === null) return proxy.web(request, response);
+	if (program === null || !request.query.encoded || request.query.encoded === '') return proxy.web(request, response);
 
 	let file = program.recorded;
 
 	try {
-		if (request.query && request.query.encoded) file = program.encoded[request.query.encoded].file;
+		if (request.query && request.query.encoded) {
+			switch (request.query.encoded) {
+				case 'org':
+					file = encodedPath + program.encoded_original.file;
+					break;
+				default:
+					file = encodedPath + program.encoded[parseInt(request.query.encoded, 10)].file;
+					break;
+			}
+		}
 	} catch (e) {
-		file = null;
+		response.setHeader('Cache-Control', 'no-cache');
+		response.setHeader('Pragma', 'no-cache');
+		return response.error(405);
 	}
 
-	if (!file || !fs.existsSync(file)) {
+	if (!fs.existsSync(file)) {
 		response.setHeader('Cache-Control', 'no-cache');
 		response.setHeader('Pragma', 'no-cache');
 		return response.error(410);

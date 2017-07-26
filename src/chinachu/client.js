@@ -6,13 +6,29 @@ class ChinachuClient {
         this._request = request.defaults({ simple: false, followRedirect: true, resolveWithFullResponse: true, });
     }
 
-    async deleteFile(id) {
+    async deleteFile(id,encoded) {
         const uri = this.path + '/api/recorded/' + id + '/file.json';
-        const res = await this._request.del(uri);
+        const res = await this._request.del({
+            uri: uri,
+            form: {encoded: encoded || ''}
+        });
 
         if (res.statusCode !== 200) {
             return Promise.reject(new Error('Failed del request from ' + uri + ' statuscode:' + res.statusCode));
         }
+    }
+
+    async existFile(id,encoded) {
+        const uri = this.path + '/api/recorded/' + id + '/file.json';
+        const res = await this._request.get({
+            uri: uri,
+            qs: {encoded: encoded || ''}
+        });
+
+        if (res.statusCode !== 200) {
+            return false;
+        }
+        return true;
     }
 
     async getRecorded() {

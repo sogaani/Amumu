@@ -1,14 +1,18 @@
 const Encoder = require('./Encoder');
 const Datastore = require('nedb');
+const path = require('path');
+const ChinachuClient = require('../chinachu/client');
 
 const ENCODED_DATA_FILE = __dirname + '/../../data/encoded.db';
 const MAX_PRIORITY = 100;
 class EncodeManager {
-    constructor(inputDir, outputDir, num, config) {
+    constructor(inputDir, outputDir, num, config, amumuPath) {
         this.inputDir = inputDir;
         this.outputDir = outputDir;
         this.default = config;
         this.encoders = [];
+        this.amumuPath = amumuPath;
+        this.chinachu = new ChinachuClient(amumuPath);
         for (let i = 0; i < num; i++) {
             this.encoders.push(new Encoder(inputDir, outputDir, config));
         }
@@ -132,7 +136,7 @@ class EncodeManager {
         self.db.update({ 'id': program.id }, { $pull: { encoded: encoded } }, {});
     }
 
-    _pushEncoded(program, encoded) {
+    _pushEncoded(program, encoded, original) {
         const self = this;
         return new Promise((resolve, reject) => {
             self.db.find({ 'id': program.id }, function (err, docs) {
@@ -142,52 +146,81 @@ class EncodeManager {
                 if (docs.length) {
                     // update program
                     console.log('update');
-                    self.db.update({ 'id': program.id }, { $addToSet: { encoded: encoded } }, {}, (err) => {
-                        if (err) reject(err);
-                        resolve(program);
-                    });
+                    if (original) {
+                        self.db.update({ 'id': program.id }, { $set: { encoded_original: encoded } }, {}, (err) => {
+                            if (err) reject(err);
+                            resolve(program);
+                        });
+                    } else {
+                        self.db.update({ 'id': program.id }, { $addToSet: { encoded: encoded } }, {}, (err) => {
+                            if (err) reject(err);
+                            resolve(program);
+                        });
+                    }
 
                 } else {
                     // new program
+                    let _program = Object.assign({}, program);
+                    _program.encoded = [];
+                    if (original) {
+                        _program.encoded_original = encoded;
+                    } else {
+                        _program.encoded.push(encoded);
+                    }
                     console.log('new');
-                    self.db.insert(program, (err) => {
+                    self.db.insert(_program, (err) => {
                         if (err) reject(err);
-                        resolve(program);
+                        resolve(_program);
                     });
                 }
             });
         });
     }
 
-    async encode(program) {
+    encode(program, config) {
         const self = this;
 
-        let config = Object.assign({}, this.default);
-        let appendix;
+        return new Promise(async (resolve, reject) => {
+            let _config = Object.assign({}, this.default);
+            let appendix = '';
 
-        if (program.option) {
-            config = Object.assign(config, program.option);
-            appendix = '_' + config.size + '_' + config.quarity + '_' + config.hardware;
-        }
-        appendix = '.' + config.format;
+            if (config) {
+                _config = Object.assign(_config, config);
 
-        const file = program.recorded.match(/\/([^\/]+?)$/)[1];
-        const input = program.reencode ? this.outputDir + file : this.inputDir + file;
-        const output = this.outputDir + file.replace(/\.[^.]+$/, '') + appendix;
+                if (!config.original) {
+                    appendix = '_' + _config.size + '_' + _config.quality + '_' + _config.hardware;
+                }
+            }
+            appendix += '.' + _config.format;
 
-        const encoder = await self._getEncoder(10, output, this.default);
-        const proc = await encoder.encode(input, output, config);
+            const file = path.parse(program.recorded).name + appendix;
+            let input;
+            if (self.chinachu.existFile(program.id)) {
+                input = self.amumuPath + '/api/recorded/' + program.id + '/watch.m2ts';
+            } else if (self.chinachu.existFile(program.id, 'org')) {
+                input = self.amumuPath + '/api/recorded/' + program.id + '/watch.mp4?encoded=org';
+            } else {
+                return reject(new Error('File id:' + program.id + ' not exist'));
+            }
 
-        return new Promise((resolve, reject) => {
-            encoder.once('exit', async (err, encoded) => {
+            const output = this.outputDir + file;
+
+            const encoder = await self._getEncoder(10, output, _config);
+
+            encoder.encode(input, output, _config);
+
+            encoder.once('exit', async (err) => {
 
                 if (err) {
                     reject(err);
                 } else {
-                    program.recorded = encoded.file;
+                    const encoded = {
+                        file: file,
+                        config: _config
+                    }
                     program.encoded = [];
 
-                    await self._pushEncoded(program, encoded);
+                    await self._pushEncoded(program, encoded, config.original);
 
                     resolve();
                 }

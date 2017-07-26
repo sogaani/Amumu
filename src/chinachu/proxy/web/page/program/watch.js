@@ -94,10 +94,11 @@ P = Class.create(P, {
         };
 
         var set = JSON.parse(localStorage.getItem('program.watch.settings') || '{}');
-        var rtype = program.recorded.match(/\.([^\.]+?$)/)[1];
 
         set.encoded = 'org';
-
+        if (!set.original) {
+            set.original = false;
+        }
         if (!set.size) {
             set.size = '';
         }
@@ -135,8 +136,8 @@ P = Class.create(P, {
                             url += '/api/recorded/';
                         }
 
-                        var ext = rtype;
-                        if (d.encoded) ext = 'mp4';
+                        var ext = 'mp4';
+                        if (d.encoded === '') ext = 'm2ts';
 
                         url += program.id + '/watch.' + ext + '?' + Object.toQueryString(d);
 
@@ -168,7 +169,7 @@ P = Class.create(P, {
                             return;
                         }
 
-                        if (rtype === 'm2ts') {
+                        if (d.encoded === '') {
                             var url = location.host + location.pathname.replace(/\/[^\/]*$/, '');
 
                             if (program._isRecording) {
@@ -177,10 +178,7 @@ P = Class.create(P, {
                                 url += '/api/recorded/';
                             }
 
-                            var ext = rtype;
-                            if (d.encoded) ext = 'mp4';
-
-                            url += program.id + '/watch.' + ext + '?' + Object.toQueryString(d);
+                            url += program.id + '/watch.m2ts?' + Object.toQueryString(d);
 
                             location.href = "vlc:// " + location.protocol + '//' + url;
                         } else {
@@ -239,8 +237,8 @@ P = Class.create(P, {
                         var d = this.form.getResult();
                         saveSettings(d);
 
-                        var ext = rtype;
-                        if (d.encoded) ext = 'mp4';
+                        var ext = 'mp4';
+                        if (d.encoded === '') ext = 'm2ts';
 
                         if (d.encoded === 'new') {
                             new flagrate.Modal({
@@ -312,9 +310,16 @@ P = Class.create(P, {
 
         var encoded = [];
         encoded.push({
-            label: 'オリジナル',
-            value: 'org'
+            label: 'オリジナル(m2ts)',
+            value: ''
         });
+
+        if (program.encoded_original) {
+            encoded.push({
+                label: 'オリジナル(mp4)',
+                value: 'org'
+            });
+        }
 
         if (program.encoded) {
             program.encoded.forEach((element, index) => {
@@ -397,25 +402,48 @@ P = Class.create(P, {
                 depends: [
                     { key: 'encoded', val: 'new' }
                 ]
+            },
+            {
+                key: 'original',
+                label: 'オリジナル',
+                input: {
+                    type: 'checkbox',
+                    isRequired: true,
+                    val: set.original,
+                    label: 'm2tsが削除された場合にエンコードのソースとして利用されるようになります'
+                },
+                depends: [
+                    { key: 'encoded', val: 'new' }
+                ]
             }
         ];
+
+        if (program.encoded_original) {
+            fields.push({
+                key: 'size',
+                label: 'サイズ',
+                text: program.encoded_original.config.size || '無変換',
+                depends: [
+                    { key: 'encoded', val: 'org' }
+                ]
+            });
+
+            fields.push({
+                key: 'quality',
+                label: '品質',
+                text: program.encoded_original.config.quality,
+                depends: [
+                    { key: 'encoded', val: 'org' }
+                ]
+            });
+        }
 
         if (program.encoded) {
             program.encoded.forEach((element, index) => {
                 fields.push({
                     key: 'size',
                     label: 'サイズ',
-                    input: {
-                        type: 'radios',
-                        isRequired: true,
-                        val: set.size,
-                        items: [
-                            {
-                                label: element.config.size,
-                                value: element.config.size
-                            }
-                        ]
-                    },
+                    text: element.config.size || '無変換',
                     depends: [
                         { key: 'encoded', val: index }
                     ]
@@ -424,17 +452,7 @@ P = Class.create(P, {
                 fields.push({
                     key: 'quality',
                     label: '品質',
-                    input: {
-                        type: 'radios',
-                        isRequired: true,
-                        val: set.quality,
-                        items: [
-                            {
-                                label: element.config.quality,
-                                value: element.config.quality
-                            }
-                        ]
-                    },
+                    text: element.config.quality,
                     depends: [
                         { key: 'encoded', val: index }
                     ]
@@ -457,14 +475,10 @@ P = Class.create(P, {
         var p = this.program;
         var d = this.d;
 
-        d.ss = d.ss || 0;
-
-        if (p._isRecording) d.ss = '';
-
         var getRequestURI = function () {
 
             var r = location.protocol + '//' + location.host + location.pathname.replace(/\/[^\/]*$/, '');
-            r += '/api/' + (!!p._isRecording ? 'recording' : 'recorded') + '/' + p.id + '/watch.' + d.ext;
+            r += '/api/' + (!!p._isRecording ? 'recording' : 'recorded') + '/' + p.id + '/watch.mp4';
             var q = Object.toQueryString(d);
 
             return r + '?' + q;
@@ -479,17 +493,6 @@ P = Class.create(P, {
             return r + '?' + q;
         };
 
-        var togglePlay = function () {
-
-            if (p._isRecording) return;
-
-            if (video.paused) {
-                video.play();
-            } else {
-                video.pause();
-            }
-        };
-
         // create video view
 
         var videoContainer = new flagrate.Element('div', {
@@ -498,200 +501,21 @@ P = Class.create(P, {
 
         var video = new flagrate.Element('video', {
             autoplay: false,
-            controls: false,
+            controls: true,
             poster: getPreviewURI(0)
         }).insertTo(videoContainer);
 
         new flagrate.Element('source', {
             src: getRequestURI(),
-            type: 'video/' + d.ext
+            type: 'video/mp4'
         }).insertTo(video);
 
         //debug
         window.video = video;
 
-        video.onloadstart = function () {
-            control.getElementByKey('play').setLabelHTML('&#8987;');
-        };
-
-        video.oncanplay = function () {
-            if (video.paused) {
-                control.getElementByKey('play').setLabelHTML('&#57458;');
-            } else {
-                control.getElementByKey('play').setLabelHTML('&#57459;');
-            }
-        };
-
-        video.onpause = function () {
-            control.getElementByKey('play').setLabelHTML('&#57458;');
-            d.ss = seek.getValue() - 2;
-            console.log(d.ss);
-            video.src = getRequestURI();
-        };
-
-        video.onplay = function () {
-            video.poster = "";
-            control.getElementByKey('play').setLabelHTML('&#57459;');
-        };
-
         video.volume = 1;
 
         video.play();
-
-        // create control view
-
-        var control = new flagrate.Toolbar({
-            className: 'video-control',
-            items: [
-                {
-                    key: 'play',
-                    element: new flagrate.Button({ labelHTML: '&#8987;', onSelect: togglePlay })
-                },
-                '--',
-                {
-                    key: 'fast-rewind',
-                    element: new flagrate.Button({ labelHTML: '&#57457;' })
-                },
-                {
-                    key: 'fast-forward',
-                    element: new flagrate.Button({ labelHTML: '&#57461;' })
-                },
-                '--',
-                {
-                    key: 'played',
-                    element: new flagrate.Element('span').insertText('00:00')
-                },
-                {
-                    key: 'seek',
-                    element: new flagrate.Slider({ value: 0, max: p.seconds, className: 'seek' })
-                },
-                {
-                    key: 'duration',
-                    element: new flagrate.Element('span').insertText(
-                        Math.floor(p.seconds / 60).toPaddedString(2) + ':' + (p.seconds % 60).toPaddedString(2)
-                    )
-                },
-                '--',
-                {
-                    key: 'vol',
-                    element: new flagrate.Slider({ value: 10, max: 10 })
-                }
-            ]
-        }).insertTo(this.view.content);
-
-        var seek = control.getElementByKey('seek');
-
-        var seekTimeoutId = null;
-        var seekSlideEvent = function () {
-            if (seekTimeoutId) {
-                return false;
-            }
-            var lastValue = seek.getValue();
-
-            seek.disable();
-            fastForward.disable();
-            fastRewind.disable();
-
-            seekTimeoutId = setTimeout(function () {
-                var value = seek.getValue();
-                seekTimeoutId = null;
-                if (lastValue === value) {
-                    d.ss = value;
-                    var uri = getRequestURI();
-
-                    video.src = uri;
-                    video.play();
-
-                    lastTime = 0;
-                    currentTime = d.ss * 1000;
-
-                    setTimeout(function () {
-                        seek.enable();
-                        fastForward.enable();
-                        fastRewind.enable();
-                    }, 1000);
-                } else {
-                    seekSlideEvent();
-                }
-            }, 500);
-        };
-
-        var seekValue = function (value) {
-            var sec = seek.getValue() + value;
-            if (sec < 0) sec = 0;
-            else if (sec > p.seconds) sec = p.seconds;
-            seek.setValue(sec);
-            seekSlideEvent();
-        };
-
-        var fastForward = control.getElementByKey('fast-forward');
-        fastForward.addEventListener('click', function () {
-            seekValue(15);
-        });
-
-        var fastRewind = control.getElementByKey('fast-rewind')
-        fastRewind.addEventListener('click', function () {
-            seekValue(-15);
-        });
-
-
-        if (p._isRecording) {
-            seek.disable();
-            control.getElementByKey('play').updateText('Live');
-            control.getElementByKey('play').disable();
-        }
-
-        control.getElementByKey('vol').addEventListener('slide', function () {
-
-            var vol = control.getElementByKey('vol');
-
-            video.volume = vol.getValue() / 10;
-        });
-
-        seek.addEventListener('slide', seekSlideEvent);
-
-        var lastTime = 0;
-        var currentTime = 0;
-
-        var updateTime = function () {
-
-            if (seek.isEnabled() === false) return;
-
-            if (lastTime && video.paused === false) {
-                currentTime += Date.now() - lastTime;
-            }
-
-            var current = Math.floor(currentTime / 1000);
-
-            control.getElementByKey('played').updateText(
-                Math.floor(current / 60).toPaddedString(2) + ':' + (current % 60).toPaddedString(2)
-            );
-            seek.setValue(current);
-
-            lastTime = Date.now();
-        };
-
-        var updateLiveTime = function () {
-
-            var current = (new Date().getTime() - p.start) / 1000;
-
-            current = Math.floor(current);
-
-            if (current > p.seconds) {
-                this.app.pm.realizeHash(true);
-            }
-
-            control.getElementByKey('played').updateText(
-                Math.floor(current / 60).toPaddedString(2) + ':' + (current % 60).toPaddedString(2)
-            );
-            seek.setValue(current);
-        }.bind(this);
-
-        if (p._isRecording) {
-            this.timer.updateLiveTime = setInterval(updateLiveTime, 250);
-        } else {
-            this.timer.updateTime = setInterval(updateTime, 100);
-        }
 
         return this;
     }

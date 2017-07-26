@@ -16,7 +16,7 @@
 				}
 
 				response.head(200);
-				response.end(JSON.stringify(recorded));
+				response.end(JSON.stringify(programs));
 			}
 			break;
 
