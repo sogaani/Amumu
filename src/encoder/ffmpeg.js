@@ -43,9 +43,6 @@ const FormatQsv = {
         return filter.length ? ['-vf', filter.join(',')] : [];
     },
     */
-    config: (d, h, info) => {
-        return ['-hwaccel', 'qsv']; //not work on my windows
-    },
     filter: (d, h) => {
         let filter = [];
         if (d) filter.push('yadif=0');

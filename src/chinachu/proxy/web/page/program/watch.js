@@ -35,6 +35,7 @@ P = Class.create(P, {
     ,
     deinit: function () {
 
+        if (this.player) setTimeout(function () { this.player.dispose(); }.bind(this), 0);
         if (this.modal) setTimeout(function () { this.modal.close(); }.bind(this), 0);
 
         document.stopObserving('chinachu:recording', this.onNotify);
@@ -500,6 +501,9 @@ P = Class.create(P, {
         }).insertTo(this.view.content);
 
         var video = new flagrate.Element('video', {
+            'class': 'video-js vjs-fluid',
+            'id': 'amumu-video',
+            'data-setup': '{}',
             autoplay: false,
             controls: true,
             poster: getPreviewURI(0)
@@ -510,12 +514,9 @@ P = Class.create(P, {
             type: 'video/mp4'
         }).insertTo(video);
 
-        //debug
-        window.video = video;
-
         video.volume = 1;
 
-        video.play();
+        this.player = videojs('amumu-video');
 
         return this;
     }
