@@ -1,0 +1,16 @@
+{
+  "apps": [
+    {
+      "name": "amumu-server",
+      "script": "src/amumu_server.js",
+      "node_args": "",
+      "error_file": "/usr/local/var/log/amumu-server.stderr.log",
+      "out_file": "/usr/local/var/log/amumu-server.stdout.log",
+      "exec_interpreter": ".nave/node",
+      "merge_logs": true,
+      "pid_file": "/usr/local/var/run/amumu-server.pid",
+      "exec_mode": "fork",
+      "autorestart": true
+    }
+  ]
+}

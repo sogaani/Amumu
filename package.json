@@ -2,10 +2,11 @@
   "name": "amumu",
   "version": "1.0.0",
   "description": "amumu",
-  "main": "src/amumu_server.js",
+  "main": "server/amumu_server.js",
   "scripts": {
-    "client": "node src/amumu_client.js",
-    "server": "node src/amumu_server.js"
+    "client": "node client/amumu_client.js",
+    "server": "node server/amumu_server.js",
+    "encoder": "node encoder/amumu_encoder.js"
   },
   "repository": {
     "type": "git",

@@ -8,17 +8,10 @@
         "size": "720",
         "deinterlace": true
     },
-    "recorded": {
-        "type": "smb",
-        "path": "\\\\host\\path\\to\\recorded\\<file>.m2ts",
-        "authUser": "hoge",
-        "authPass": "hoge"
-    },
     "encoded": {
         "type": "file",
         "path": "/path/to/encorded/<file>.mp4"
     },
     "deleteEncodedFile": false,
-    "replaceRecordedWithEncoded": false,
     "workerLimit": 1
 }

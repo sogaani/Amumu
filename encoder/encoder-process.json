@@ -1,0 +1,16 @@
+{
+  "apps": [
+    {
+      "name": "amumu-encoder",
+      "script": "src/amumu_encoder.js",
+      "node_args": "",
+      "error_file": "/usr/local/var/log/amumu-encoder.stderr.log",
+      "out_file": "/usr/local/var/log/amumu-encoder.stdout.log",
+      "exec_interpreter": ".nave/node",
+      "merge_logs": true,
+      "pid_file": "/usr/local/var/run/amumu-encoder.pid",
+      "exec_mode": "fork",
+      "autorestart": true
+    }
+  ]
+}

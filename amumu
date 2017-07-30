@@ -60,7 +60,7 @@ main () {
   NODE_PATH=${NAVE_DIR}/installed/${NODE_VER}/bin/node
   NPM_PATH=${NAVE_DIR}/installed/${NODE_VER}/bin/npm
   MONGO_DIR=${AMUMU_DIR}/.mongo
-  DB_PATH=${AMUMU_DIR}/db
+  DB_PATH=${AMUMU_DIR}/data
   export PATH=${MONGO_DIR}/bin:$NAVE_DIR:${NAVE_DIR}/installed/${NODE_VER}/bin:$PATH
 
   cd $AMUMU_DIR
@@ -71,7 +71,7 @@ main () {
   local cmd="$1"
   shift
   case $cmd in
-    client | server | installer | setup)
+    client | server | encoder | installer | setup)
       cmd="amumu_$cmd"
       ;;
     * )
@@ -83,19 +83,26 @@ main () {
 
 amumu_client () {
   if ! [ -f "client_config.json" ]; then
-    cp -v client_config.sample.json client_config.json
+    cp -v client/client_config.sample.json client_config.json
   fi
 
   ensure_dir log
 
-  node src/amumu_client.js "$1" > /dev/stdout 2>&1 | tee -a ./log/client
+  node client/amumu_client.js "$1" > /dev/stdout 2>&1 | tee -a ./log/client
   return ${PIPESTATUS[0]}
 }
 
 amumu_server () {
   ensure_dir log
 
-  node src/amumu_server.js > /dev/stdout 2>&1 | tee -a ./log/server
+  node server/amumu_server.js > /dev/stdout 2>&1 | tee -a ./log/server
+  return ${PIPESTATUS[0]}
+}
+
+amumu_encoder () {
+  ensure_dir log
+
+  node encoder/amumu_encoder.js > /dev/stdout 2>&1 | tee -a ./log/encoder
   return ${PIPESTATUS[0]}
 }
 
@@ -260,6 +267,7 @@ Commands:
   installer               Install binaries
   client <json>           Run a client.
   server                  Run a server.
+  server                  Run a encoder.
   setup                   Run db
   help                    Output this information.
 

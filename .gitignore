@@ -1,10 +1,10 @@
 /server_config.json
 /client_config.json
+/encoder_config.json
 /log/
 /node_modules/
 /.nave/
 /.mongodb/
-/data/encoded.db
-/data/recorded.json
-/src/encoder/test.mp4
-/src/encoder/test.m2ts
+/data/
+/lib/encoder/test.mp4
+/lib/encoder/test.m2ts
