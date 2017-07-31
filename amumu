@@ -61,7 +61,7 @@ main () {
   NPM_PATH=${NAVE_DIR}/installed/${NODE_VER}/bin/npm
   MONGO_DIR=${AMUMU_DIR}/.mongo
   DB_PATH=${AMUMU_DIR}/data
-  export PATH=${MONGO_DIR}/bin:$NAVE_DIR:${NAVE_DIR}/installed/${NODE_VER}/bin:$PATH
+  export PATH=${AMUMU_DIR}/bin:${MONGO_DIR}/bin:$NAVE_DIR:${NAVE_DIR}/installed/${NODE_VER}/bin:$PATH
 
   cd $AMUMU_DIR
 
@@ -206,11 +206,16 @@ amumu_installer_node () {
   remove_dir "$NAVE_DIR"
   ensure_dir "$NAVE_DIR"
 
-  echo "Installing Node using Nave..."
-  wget -O - https://github.com/isaacs/nave/archive/v${NAVE_VER}.tar.gz | tar zxvf - -C $NAVE_DIR nave-${NAVE_VER}/nave.sh
-  mv ${NAVE_DIR}/nave-${NAVE_VER}/nave.sh ${NAVE_DIR}/
-  rm -rfv $NAVE_DIR/nave-${NAVE_VER}
-  ${NAVE_DIR}/nave.sh install $NODE_VER
+ echo "Installing Node using Nave..."
+
+  if [ -f "/etc/alpine-release" ]; then
+    nave-alpine.sh install $NODE_VER
+  else
+    wget -O - https://github.com/isaacs/nave/archive/v${NAVE_VER}.tar.gz | tar zxvf - -C $NAVE_DIR nave-${NAVE_VER}/nave.sh
+    mv ${NAVE_DIR}/nave-${NAVE_VER}/nave.sh ${NAVE_DIR}/
+    rm -rfv $NAVE_DIR/nave-${NAVE_VER}
+    ${NAVE_DIR}/nave.sh install $NODE_VER
+  fi
   rm -fv ${NAVE_DIR}/node
   ln -sv $NODE_PATH ${NAVE_DIR}/node
   ln -sv $NPM_PATH ${NAVE_DIR}/npm
