@@ -1,0 +1,11 @@
+{
+    "mongodbPath": "mongodb://192.168.11.5:10782/",
+    "chinachuPath": "http://192.168.11.5:10772",
+    "encoded": {
+        "type": "smb",
+        "path": "\\\\192.168.11.5\\share2\\video\\",
+        "authUser": "sogaani",
+        "authPass": "05046295"
+    },
+    "port": 20782
+}

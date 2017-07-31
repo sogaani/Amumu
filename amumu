@@ -71,7 +71,7 @@ main () {
   local cmd="$1"
   shift
   case $cmd in
-    client | server | encoder | installer | setup)
+    client | service | installer | setup)
       cmd="amumu_$cmd"
       ;;
     * )
@@ -89,20 +89,6 @@ amumu_client () {
   ensure_dir log
 
   node client/amumu_client.js "$1" > /dev/stdout 2>&1 | tee -a ./log/client
-  return ${PIPESTATUS[0]}
-}
-
-amumu_server () {
-  ensure_dir log
-
-  node server/amumu_server.js > /dev/stdout 2>&1 | tee -a ./log/server
-  return ${PIPESTATUS[0]}
-}
-
-amumu_encoder () {
-  ensure_dir log
-
-  node encoder/amumu_encoder.js > /dev/stdout 2>&1 | tee -a ./log/encoder
   return ${PIPESTATUS[0]}
 }
 
@@ -151,6 +137,173 @@ amumu_setup_db () {
   ensure_dir "${DB_PATH}"
   mongod --fork --logpath ${DB_PATH}/mongod.log --dbpath ${DB_PATH} --port 10782
   echo "done"
+
+  return 0
+}
+
+amumu_service () {
+  local cmd name action
+  name="$1"
+  action="$2"
+  case $action in
+    initscript | execute )
+      case $name in
+        proxy | encoder )
+          cmd="amumu_service_$action"
+          ;;
+      esac
+      ;;
+    * )
+      cmd="amumu_service_help"
+      ;;
+  esac
+  $cmd "$name" && return 0
+}
+
+amumu_service_initscript () {
+  local name="$1"
+
+  cat <<EOF
+#!/bin/bash
+# /etc/
+
+### BEGIN INIT INFO
+# Provides:          amumu-${name}
+# Required-Start:    \$local_fs \$remote_fs \$network \$syslog
+# Required-Stop:     \$local_fs \$remote_fs \$network \$syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: starts the amumu-${name}
+# Description:       starts the amumu-${name} (USER=$USER)
+### END INIT INFO
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=${AMUMU_DIR}/amumu
+DAEMON_OPTS="service ${name} execute"
+NAME=amumu-${name}
+USER=$USER
+PIDFILE=/var/run/\${NAME}.pid
+
+test -x \$DAEMON || exit 0
+
+start () {
+  echo -n "Starting \${NAME}: "
+
+  if [ -f \$PIDFILE ]; then
+    PID=\`cat \$PIDFILE\`
+    if [ -z "\`ps axf | grep \${PID} | grep -v grep\`" ]; then
+      rm -f \$PIDFILE
+    else
+      echo "\${NAME} is already running? (pid=\${PID})"
+      exit
+    fi
+  fi
+
+  PID=\$(su \$USER -c "exec \$DAEMON \$DAEMON_OPTS < /dev/null > /dev/null 2>&1 & echo \\\$!")
+
+  if [ -z \$PID ]; then
+    echo "Failed!"
+    exit
+  else
+    echo \$PID > \$PIDFILE
+  fi
+
+  echo "OK."
+}
+
+stop () {
+  echo -n "Stopping \${NAME}: "
+
+  if [ -f \$PIDFILE ]; then
+    PID=\`cat \$PIDFILE\`
+    PGID=\`ps -p \$PID -o pgrp | grep -v PGRP\`
+    kill -QUIT -\`echo \$PGID\`
+    echo "OK."
+    rm -f \$PIDFILE
+  else
+    echo "\${NAME} is not running? (\${PIDFILE} not found)."
+  fi
+}
+
+status () {
+  if [ -f \$PIDFILE ]; then
+    PID=\`cat \$PIDFILE\`
+    if [ -z "\`ps axf | grep \${PID} | grep -v grep\`" ]; then
+      echo "\${NAME} is dead but \${PIDFILE} exists."
+    else
+      echo "\${NAME} is running."
+    fi
+  else
+    echo "\${NAME} is NOT running."
+  fi
+}
+
+case "\$1" in
+  start )
+    start "\$@"
+    ;;
+  stop )
+    stop "\$@"
+    ;;
+  restart )
+    stop "\$@"
+    sleep 3
+    start "\$@"
+    ;;
+  status )
+    status "\$@"
+    ;;
+  *)
+    echo "Usage: \$NAME {start|stop|restart|status}" >&2
+    exit 1
+    ;;
+esac
+
+exit 0
+
+EOF
+
+  return 0
+}
+
+amumu_service_execute () {
+  local name="$1"
+
+  if ! [ -f "${name}_config.json" ]; then
+    cp -v ${name}/${name}_config.sample.json ${name}_config.json
+  fi
+
+  ensure_dir log
+
+  node ${name}/amumu_${name}.js > /dev/stdout 2>&1 | tee -a ./log/${name}
+  return ${PIPESTATUS[0]}
+}
+
+amumu_service_help () {
+  cat <<EOF
+
+Usage: ./amumu service <name> <action>
+
+Names:
+
+proxy       amumu Proxy Server Service
+encoder     amumu Encode Server Service
+
+Actions:
+
+initscript  Output a LSB init script
+execute     Execute
+
+Examples:
+
+# Create a LSB init script and Install to system
+./amumu service proxy initscript > /tmp/amumu-proxy
+./amumu service encoder initscript > /tmp/amumu-encoder
+sudo chown root:root /tmp/amumu-proxy /tmp/amumu-encoder
+sudo chmod +x /tmp/amumu-proxy /tmp/amumu-encoder
+sudo mv /tmp/amumu-proxy /tmp/amumu-encoder /etc/init.d/
+
+EOF
 
   return 0
 }
@@ -206,7 +359,7 @@ amumu_installer_node () {
   remove_dir "$NAVE_DIR"
   ensure_dir "$NAVE_DIR"
 
- echo "Installing Node using Nave..."
+  echo "Installing Node using Nave..."
 
   if [ -f "/etc/alpine-release" ]; then
     nave-alpine.sh install $NODE_VER
@@ -271,9 +424,8 @@ Usage: ./amumu <cmd> ...
 Commands:
   installer               Install binaries
   client <json>           Run a client.
-  server                  Run a server.
-  server                  Run a encoder.
-  setup                   Run db
+  service <name> <action> Service-utility.
+  setup <req>             Setup-utility.
   help                    Output this information.
 
 json:

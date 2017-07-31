@@ -16,6 +16,18 @@ var chinachu;
 config.limit = config.limit || 1
 config.deleteEncodedFile = config.deleteEncodedFile || false;
 
+// 終了処理
+process.on('SIGQUIT', () => {
+	setTimeout(() => {
+		process.exit(0);
+	}, 0);
+});
+
+// 例外処理
+process.on('uncaughtException', (err) => {
+	console.error('uncaughtException: ' + err.stack);
+});
+
 async function amumu(job, done) {
     try {
         const id = job.attrs.data.program.id;
@@ -37,7 +49,7 @@ async function amumu(job, done) {
 
 function main() {
     workQueue = new WorkQueue(config.mongodbPath);
-    manager = new EncodeManager(config.encoded.path, config.limit, config.encoder, config.chinachuPath);
+    manager = new EncodeManager(config.encoded.path, config.limit, config.encoder, config.chinachuPath, config.mongodbPath);
     chinachu = new ChinachuClient(config.chinachuPath);
 
     if (config.encoded.type === 'smb') {

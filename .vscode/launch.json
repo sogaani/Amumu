@@ -8,8 +8,8 @@
         {
             "type": "node",
             "request": "launch",
+            "args": ["--trace-warnings", "${workspaceRoot}/proxy/amumu_proxy.js"],
             "name": "amumu",
-            "program": "${workspaceRoot}/src/chinachu/test.js",
             "stopOnEntry": false
         }
     ]

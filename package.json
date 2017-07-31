@@ -5,7 +5,7 @@
   "main": "server/amumu_server.js",
   "scripts": {
     "client": "node client/amumu_client.js",
-    "server": "node server/amumu_server.js",
+    "proxy": "node proxy/amumu_proxy.js",
     "encoder": "node encoder/amumu_encoder.js"
   },
   "repository": {

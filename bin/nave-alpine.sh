@@ -231,9 +231,9 @@ get_tgz () {
   # echo "1 get_ '$NODEDIST/$path' '$@'" >&2
   get_ "$NODEDIST/$path" "$@" > "$cache/$dir/$base"
 
-  local actualshasum=$(shasum -a 256 "$cache/$dir/$base" | awk '{print $1}')
+  local actualshasum=$(sha256sum "$cache/$dir/$base" | awk '{print $1}')
   if ! [ "$shasum" = "$actualshasum" ]; then
-    echo "shasum mismatch, expect $shasum, got $shasum" >&2
+    echo "shasum mismatch, expect $shasum, got $actualshasum" >&2
     rm "$cache/$dir/$base"
     return 1
   fi
@@ -320,7 +320,7 @@ build () {
     case "$version" in
       0.8.[012345]) binavail=0 ;;
       0.[1234567].*) binavail=0 ;;
-      *) binavail=1 ;;
+      *) binavail=0 ;;
     esac
     if [ $binavail -eq 1 ]; then
       local t="$version-$os-$arch"
