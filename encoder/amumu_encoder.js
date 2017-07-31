@@ -34,7 +34,7 @@ async function amumu(job, done) {
         const recorded = job.attrs.data.program.recorded;
 
         await manager.encode(job.attrs.data.program, job.attrs.data.config);
-        if (config.deleteEncodedFile) await chinachu.deleteFile(id);
+        if (config.deleteEncodedFile && job.attrs.data.config.original) await chinachu.deleteFile(id);
 
         console.log("encode end");
         done();
