@@ -1,9 +1,9 @@
 {
     "mongodbPath": "mongodb://localhost:10782/",
-    "chinachuPath": "http://chinachu:10772/",
+    "chinachuPath": "http://localhost:10772/",
     "encoded": {
         "type": "file",
-        "path": "/path/to/encorded/<file>.mp4"
+        "path": "/path/to/encorded/"
     },
     "port": 20782
 }
