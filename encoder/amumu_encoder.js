@@ -18,20 +18,19 @@ config.deleteEncodedFile = config.deleteEncodedFile || false;
 
 // 終了処理
 process.on('SIGQUIT', () => {
-	setTimeout(() => {
-		process.exit(0);
-	}, 0);
+    setTimeout(() => {
+        process.exit(0);
+    }, 0);
 });
 
 // 例外処理
 process.on('uncaughtException', (err) => {
-	console.error('uncaughtException: ' + err.stack);
+    console.error('uncaughtException: ' + err.stack);
 });
 
 async function amumu(job, done) {
     try {
         const id = job.attrs.data.program.id;
-        const recorded = job.attrs.data.program.recorded;
 
         await manager.encode(job.attrs.data.program, job.attrs.data.config);
         if (config.deleteEncodedFile && job.attrs.data.config.original) await chinachu.deleteFile(id);
