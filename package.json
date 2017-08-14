@@ -25,6 +25,7 @@
   "dependencies": {
     "agenda": "^0.9.1",
     "agendash": "^0.4.0",
+    "chokidar": "^1.7.0",
     "http-proxy": "^1.16.2",
     "mongodb": "^2.2.29",
     "nedb": "^1.8.0",
