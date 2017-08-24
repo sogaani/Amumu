@@ -1,6 +1,6 @@
 "use strict";
 
-const proxy = require('../lib/chinachu/proxyServer');
+const Proxy = require('../lib/chinachu/proxyServer');
 const access = require('../lib/utils/access');
 const CONFIG_FILE = __dirname + '/../proxy_config.json';
 const config = require(CONFIG_FILE);
@@ -21,4 +21,5 @@ if (config.encoded.type === 'smb') {
     access.samba(config.encoded);
 }
 
-proxy.createChinachuProxy(config.chinachuPath, config.encoded.path, config.mongodbPath).listen(config.port);
+const proxy = new Proxy(config.chinachuPath, config.encoded.path, config.mongodbPath, config.encoders);
+proxy.listen(config.port);

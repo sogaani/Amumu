@@ -50,6 +50,7 @@ function main() {
     workQueue = new WorkQueue(config.mongodbPath);
     manager = new EncodeManager(config.encoded.path, config.limit, config.encoder, config.chinachuPath, config.mongodbPath);
     chinachu = new ChinachuClient(config.chinachuPath);
+    hlsServer = new HlsServer(chinachu, manager);
 
     if (config.encoded.type === 'smb') {
         access.samba(config.encoded);

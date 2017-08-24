@@ -1,6 +1,9 @@
 {
     "mongodbPath": "mongodb://192.168.11.5:10782/",
     "chinachuPath": "http://192.168.11.5:10772",
+    "encoders": [
+        "192.168.11.13"
+    ],
     "encoded": {
         "type": "smb",
         "path": "\\\\192.168.11.5\\share2\\video\\",
