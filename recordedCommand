@@ -26,7 +26,7 @@ main () {
 
   cd $AMUMU_DIR
 
-  ./amumu client "$2"
+  ./amumu client "$2" >/dev/null 2>&1
 }
 
 main "$@"

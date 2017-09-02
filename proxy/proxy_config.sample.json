@@ -1,6 +1,13 @@
 {
     "mongodbPath": "mongodb://localhost:10782/",
     "chinachuPath": "http://localhost:10772/",
+    "encoders": [
+        "192.168.11.11"
+    ],
+    "recording": {
+        "type": "file",
+        "path": "/path/to/recording/"
+    },
     "encoded": {
         "type": "file",
         "path": "/path/to/encorded/"

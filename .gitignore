@@ -8,3 +8,5 @@
 /data/
 /lib/encoder/test.mp4
 /lib/encoder/test.m2ts
+/cache/*
+!.gitkeep

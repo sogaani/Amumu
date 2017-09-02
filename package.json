@@ -6,7 +6,9 @@
   "scripts": {
     "client": "node client/amumu_client.js",
     "proxy": "node proxy/amumu_proxy.js",
-    "encoder": "node encoder/amumu_encoder.js"
+    "encoder": "node encoder/amumu_encoder.js",
+    "build:js": "npm-run-all build:js:browserify",
+    "build:js:browserify": "browserify ./lib/chinachu/proxy/web/lib/amumu/src/videojs-liveseek.js -s videojs-liveseek -o ./lib/chinachu/proxy/web/lib/amumu/dist/videojs-liveseek.js"
   },
   "repository": {
     "type": "git",
@@ -18,6 +20,15 @@
   ],
   "author": "sogaani",
   "license": "Apache-2.0",
+  "browserify": {
+    "transform": [
+      "browserify-shim"
+    ]
+  },
+  "browserify-shim": {
+    "socket.io": "global:io",
+    "video.js": "global:videojs"
+  },
   "bugs": {
     "url": "https://github.com/sogaani/amumu/issues"
   },
@@ -25,11 +36,17 @@
   "dependencies": {
     "agenda": "^0.9.1",
     "agendash": "^0.4.0",
+    "babelify": "^7.3.0",
+    "browserify": "^14.4.0",
+    "browserify-shim": "^3.8.14",
     "http-proxy": "^1.16.2",
     "mongodb": "^2.2.29",
     "nedb": "^1.8.0",
     "node": "0.0.0",
+    "npm-run-all": "^4.1.1",
     "request": "^2.81.0",
-    "request-promise-native": "^1.0.4"
+    "request-promise-native": "^1.0.4",
+    "socket.io": "^2.0.3",
+    "video.js": "^5.20.3"
   }
 }

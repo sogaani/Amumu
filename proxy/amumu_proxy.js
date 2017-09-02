@@ -1,6 +1,6 @@
 "use strict";
 
-const proxy = require('../lib/chinachu/proxyServer');
+const Proxy = require('../lib/chinachu/proxyServer');
 const access = require('../lib/utils/access');
 const CONFIG_FILE = __dirname + '/../proxy_config.json';
 const config = require(CONFIG_FILE);
@@ -18,7 +18,12 @@ process.on('uncaughtException', (err) => {
 });
 
 if (config.encoded.type === 'smb') {
-    access.samba(config.encoded);
+	access.samba(config.encoded);
 }
 
-proxy.createChinachuProxy(config.chinachuPath, config.encoded.path, config.mongodbPath).listen(config.port);
+if (config.recording && config.recording.type === 'smb') {
+	access.samba(config.recording);
+}
+
+const proxy = new Proxy(config.chinachuPath, config.encoded.path, config.mongodbPath, config.encoders, config.recording ? config.recording.path : null);
+proxy.listen(config.port);
