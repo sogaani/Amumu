@@ -18,8 +18,12 @@ process.on('uncaughtException', (err) => {
 });
 
 if (config.encoded.type === 'smb') {
-    access.samba(config.encoded);
+	access.samba(config.encoded);
 }
 
-const proxy = new Proxy(config.chinachuPath, config.encoded.path, config.mongodbPath, config.encoders);
+if (config.recording && config.recording.type === 'smb') {
+	access.samba(config.recording);
+}
+
+const proxy = new Proxy(config.chinachuPath, config.encoded.path, config.mongodbPath, config.encoders, config.recording ? config.recording.path : null);
 proxy.listen(config.port);

@@ -4,6 +4,12 @@
     "encoders": [
         "192.168.11.13"
     ],
+    "recording": {
+        "type": "smb",
+        "path": "\\\\192.168.11.5\\share2\\video\\",
+        "authUser": "sogaani",
+        "authPass": "05046295"
+    },
     "encoded": {
         "type": "smb",
         "path": "\\\\192.168.11.5\\share2\\video\\",
