@@ -135,7 +135,7 @@ amumu_setup_encode () {
 amumu_setup_db () {
   echo "Starting Mongodb..."
   ensure_dir "${DB_PATH}"
-  mongod --fork --logpath ${DB_PATH}/mongod.log --dbpath ${DB_PATH} --port 10782
+  mongod --fork --logpath ${DB_PATH}/mongod.log --dbpath ${DB_PATH} --port 10782 --bind_ip_all
   echo "done"
 
   return 0
